@@ -95,7 +95,10 @@ function handleCellClick(x, y) {
   const currentState = game.uiState;
 
   if (currentState === "IDLE") handleIdleClick(unit);
-  else if (currentState === "SELECTING_MOVE") selectMove(x, y);
+  else if (currentState === "SELECTING_MOVE") {
+    if (unit && unit.id !== game.activeUnitId) selectAttack(x, y);
+    else selectMove(x, y);
+  }
   else if (currentState === "SELECTING_ATTACK") selectAttack(x, y);
   else if (currentState === "SELECTING_SUMMON_TARGET") selectSummonTarget(x, y);
 
