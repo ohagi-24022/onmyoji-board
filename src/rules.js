@@ -211,6 +211,44 @@ export function resolveTurn(addLog) {
   return result;
 }
 
+export async function resolveTurnPhased(addLog, onPhase, delayMs = 550) {
+  addLog("=== ターン一斉解決 ===", "sys");
+  game.units.forEach((u) => { u.buffAtk = 0; });
+
+  onPhase("解決中: 激突判定");
+  resolveCollisions(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 移動と呪力獲得");
+  resolveMovementAndMana();
+  await wait(delayMs);
+
+  onPhase("解決中: 憑依");
+  resolvePossession(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 術");
+  resolveAttacks(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 召喚");
+  resolveSummons(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 撃破確認");
+  const result = removeDefeatedUnits(addLog);
+  game.planned = {};
+  game.activeUnitId = null;
+  game.uiState = "IDLE";
+  game.turn++;
+  await wait(delayMs);
+  return result;
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function resolveCollisions(addLog) {
   const collidedUnitIds = new Set();
   let resolving = true;

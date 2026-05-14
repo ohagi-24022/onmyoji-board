@@ -10,7 +10,9 @@ export const game = {
   plannedSummons: [],
   selectedSummonTemplate: null,
   unitCounter: INITIAL_UNITS.length,
-  turn: 1
+  turn: 1,
+  isResolving: false,
+  resolutionPhase: ""
 };
 
 export function resetBattleState() {
@@ -23,4 +25,6 @@ export function resetBattleState() {
   game.selectedSummonTemplate = null;
   game.unitCounter = INITIAL_UNITS.length;
   game.turn = 1;
+  game.isResolving = false;
+  game.resolutionPhase = "";
 }

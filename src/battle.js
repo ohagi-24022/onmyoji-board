@@ -1,5 +1,5 @@
 import { BOARD_SIZE, SHIKIGAMI_MASTER } from "./data.js";
-import { getEffectiveStats, getUnitLogName, planEnemyActionsAI, resolveTurn } from "./rules.js";
+import { getEffectiveStats, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
 import { game, resetBattleState } from "./state.js";
 import { addLog, createBoard, el, renderBattle, showResult, showScreen } from "./ui.js";
 
@@ -190,11 +190,21 @@ function selectSummonTarget(x, y) {
   el.summonPanel.style.display = "none";
 }
 
-function executeTurn() {
+async function executeTurn() {
+  if (game.isResolving) return;
+  game.isResolving = true;
+  game.resolutionPhase = "解決準備中";
+  document.getElementById("execute-btn").disabled = true;
+  document.getElementById("execute-btn").innerText = "解決中...";
   planEnemyActionsAI();
-  setTimeout(() => {
-    const result = resolveTurn(addLog);
+  const result = await resolveTurnPhased(addLog, (phaseLabel) => {
+    game.resolutionPhase = phaseLabel;
     renderBattle();
-    showResult(result);
-  }, 400);
+  });
+  game.isResolving = false;
+  game.resolutionPhase = "";
+  document.getElementById("execute-btn").disabled = false;
+  document.getElementById("execute-btn").innerText = "ターン確定";
+  renderBattle();
+  showResult(result);
 }

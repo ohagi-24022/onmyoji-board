@@ -89,13 +89,17 @@ export function renderBattle() {
   document.getElementById("val-mp-enemy").innerText = game.mp.enemy;
 
   updateUnitInfo();
-  addEnemyPredictions(cells);
-  addActionHints(cells);
+  if (!game.isResolving) {
+    addEnemyPredictions(cells);
+    addActionHints(cells);
+  }
 
   game.plannedSummons.forEach((summon) => {
     if (summon.owner !== "player") return;
     cells[summon.y * BOARD_SIZE + summon.x].classList.add("summon-target");
   });
+
+  addPlayerPlanMarkers(cells);
 
   game.units.forEach((unit) => {
     const cell = cells[unit.y * BOARD_SIZE + unit.x];
@@ -118,6 +122,38 @@ export function renderBattle() {
     if (game.planned[unit.id]?.move) cells[game.planned[unit.id].move.y * BOARD_SIZE + game.planned[unit.id].move.x].classList.add("move-target");
     if (game.planned[unit.id]?.attack) cells[game.planned[unit.id].attack.y * BOARD_SIZE + game.planned[unit.id].attack.x].classList.add("attack-target");
   });
+}
+
+function addPlayerPlanMarkers(cells) {
+  game.units
+    .filter((unit) => unit.owner === "player")
+    .forEach((unit) => {
+      const plan = game.planned[unit.id];
+      if (!plan) return;
+      if (plan.move) {
+        addPlanMarker(cells[plan.move.y * BOARD_SIZE + plan.move.x], "move", `移:${unit.name}`);
+      }
+      if (plan.attack) {
+        addPlanMarker(cells[plan.attack.y * BOARD_SIZE + plan.attack.x], "attack", `術:${unit.name}`);
+      }
+      if (plan.possess) {
+        addPlanMarker(cells[unit.y * BOARD_SIZE + unit.x], "possess", `憑:${unit.name}`);
+      }
+    });
+
+  game.plannedSummons
+    .filter((summon) => summon.owner === "player")
+    .forEach((summon) => {
+      const template = SHIKIGAMI_MASTER.find((m) => m.id === summon.templateId);
+      addPlanMarker(cells[summon.y * BOARD_SIZE + summon.x], "summon", `召:${template?.name ?? "式神"}`);
+    });
+}
+
+function addPlanMarker(cell, type, text) {
+  const marker = document.createElement("div");
+  marker.className = `planned-label planned-${type}-label`;
+  marker.innerText = text;
+  cell.appendChild(marker);
 }
 
 function addEnemyPredictions(cells) {
@@ -199,6 +235,11 @@ function isProjectedOccupied(x, y) {
 }
 
 function updateUnitInfo() {
+  if (game.isResolving) {
+    el.unitInfo.innerText = game.resolutionPhase || "解決中...";
+    return;
+  }
+
   const activeUnit = game.units.find((u) => u.id === game.activeUnitId);
   document.querySelectorAll(".mode-btn").forEach((button) => button.classList.remove("active"));
 
