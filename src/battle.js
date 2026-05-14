@@ -92,11 +92,12 @@ function startSummon(templateId) {
 
 function handleCellClick(x, y) {
   const unit = game.units.find((u) => u.x === x && u.y === y);
+  const currentState = game.uiState;
 
-  if (game.uiState === "IDLE") handleIdleClick(unit);
-  if (game.uiState === "SELECTING_MOVE") selectMove(x, y);
-  if (game.uiState === "SELECTING_ATTACK") selectAttack(x, y);
-  if (game.uiState === "SELECTING_SUMMON_TARGET") selectSummonTarget(x, y);
+  if (currentState === "IDLE") handleIdleClick(unit);
+  else if (currentState === "SELECTING_MOVE") selectMove(x, y);
+  else if (currentState === "SELECTING_ATTACK") selectAttack(x, y);
+  else if (currentState === "SELECTING_SUMMON_TARGET") selectSummonTarget(x, y);
 
   renderBattle();
 }
@@ -110,6 +111,7 @@ function handleIdleClick(unit) {
   }
 
   game.activeUnitId = unit.id;
+  game.uiState = "SELECTING_MOVE";
   el.summonPanel.style.display = "none";
   game.planned[game.activeUnitId] ??= { move: null, attack: null, possess: false };
 }

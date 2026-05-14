@@ -517,7 +517,7 @@ h2 {
 #result-title { margin-bottom: 10px; color: #333; font-size: 48px; }
 #result-desc { margin-bottom: 40px; color: #666; font-size: 18px; letter-spacing: 1px; }
 
-@media (max-width: 760px) {
+@media (max-width: 600px) {
   body {
     padding: 8px;
     align-items: flex-start;
