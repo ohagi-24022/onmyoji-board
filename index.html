@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>陰陽盤上戦記</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app-container">
+    <div id="screen-title" class="screen active">
+      <h1>陰陽盤上戦記</h1>
+      <p class="subtitle">同時プロット・タクティクス</p>
+      <div class="title-actions">
+        <button class="big-btn" data-screen="screen-deck">はじめる</button>
+        <button class="big-btn big-btn-secondary" data-screen="screen-rules">ルール説明</button>
+      </div>
+    </div>
+
+    <div id="screen-rules" class="screen">
+      <h2>ルール説明</h2>
+      <div class="rules-content">
+        <p class="rules-lead">行動を先に予約し、ターン確定で同時に解決する盤上タクティクスです。</p>
+
+        <section class="rule-section">
+          <span class="rule-number">1</span>
+          <div>
+            <h3>勝利条件</h3>
+            <p>敵将のHPを0にすると勝利。味方の陰陽師が倒れると敗北です。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">2</span>
+          <div>
+            <h3>同時プロット</h3>
+            <p>移動・術・召喚・憑依を予約し、ターン確定後にまとめて処理します。相手の移動先を読んで術を置くのが重要です。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">3</span>
+          <div>
+            <h3>移動と激突</h3>
+            <p>移動は周囲1マス。移動先が重なると激突し、移動が止まりダメージを受けます。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">4</span>
+          <div>
+            <h3>呪力と召喚</h3>
+            <p>移動や敵への接近で呪力を得ます。呪力を使うと、陰陽師の周囲に式神を召喚できます。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">5</span>
+          <div>
+            <h3>五行と支援</h3>
+            <p>有利属性への術はダメージ増加。相生関係の味方へ術を使うと、次の攻撃力を強化できます。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">6</span>
+          <div>
+            <h3>憑依</h3>
+            <p>味方式神を陰陽師へ憑依させ、HP・攻撃力・属性を引き継ぎます。十二天将は専用の加護を持ちます。</p>
+          </div>
+        </section>
+      </div>
+      <button class="big-btn muted" data-screen="screen-title">タイトルへ戻る</button>
+    </div>
+
+    <div id="screen-deck" class="screen">
+      <h2>式神編成</h2>
+      <div id="deck-list"></div>
+      <div id="deck-warning"></div>
+      <div id="deck-status">選択中: 0 / 3</div>
+      <div class="deck-actions">
+        <button class="big-btn muted" data-screen="screen-title">戻る</button>
+        <button id="btn-start-battle" class="big-btn" disabled>出陣</button>
+      </div>
+    </div>
+
+    <div id="screen-battle" class="screen">
+      <h2>陰陽盤上戦記</h2>
+      <div id="board"></div>
+
+      <div id="ui-panel">
+        <div class="resource-bar">
+          <span class="mp-player">陣 呪力: <span id="val-mp-player">5</span></span>
+          <span class="mp-enemy">敵 呪力: <span id="val-mp-enemy">5</span></span>
+        </div>
+        <div id="unit-info">采配を下す式神を選べ</div>
+        <div id="summon-panel"></div>
+        <div class="btn-group">
+          <button id="btn-move" class="mode-btn">移動</button>
+          <button id="btn-attack" class="mode-btn">術</button>
+          <button id="btn-possess" class="mode-btn">憑依</button>
+          <button id="btn-summon" class="mode-btn">召喚</button>
+          <button id="btn-cancel" class="mode-btn">取消</button>
+        </div>
+        <button id="execute-btn">ターン確定</button>
+      </div>
+
+      <div id="log"></div>
+      <div id="result-overlay">
+        <div id="result-title"></div>
+        <div id="result-desc"></div>
+        <button class="big-btn" data-screen="screen-title">タイトルへ戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

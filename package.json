@@ -1,0 +1,10 @@
+{
+  "name": "onmyo-board-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "check": "node --check src/main.js && node --check src/battle.js && node --check src/deck.js && node --check src/rules.js && node --check src/state.js && node --check src/ui.js && node --check src/data.js"
+  }
+}
