@@ -96,8 +96,13 @@ function handleCellClick(x, y) {
 
   if (currentState === "IDLE") handleIdleClick(unit);
   else if (currentState === "SELECTING_MOVE") {
-    if (unit && unit.id !== game.activeUnitId) selectAttack(x, y);
-    else selectMove(x, y);
+    if (unit && unit.owner === "player" && game.planned[unit.id]?.move) {
+      game.activeUnitId = unit.id;
+      game.uiState = "SELECTING_ATTACK";
+      el.summonPanel.style.display = "none";
+    } else {
+      selectMove(x, y);
+    }
   }
   else if (currentState === "SELECTING_ATTACK") selectAttack(x, y);
   else if (currentState === "SELECTING_SUMMON_TARGET") selectSummonTarget(x, y);
@@ -117,12 +122,18 @@ function handleIdleClick(unit) {
   game.uiState = "SELECTING_MOVE";
   el.summonPanel.style.display = "none";
   game.planned[game.activeUnitId] ??= { move: null, attack: null, possess: false };
+  if (game.planned[game.activeUnitId].move) game.uiState = "SELECTING_ATTACK";
 }
 
 function selectMove(x, y) {
   const unit = game.units.find((u) => u.id === game.activeUnitId);
   if (!unit) {
     game.uiState = "IDLE";
+    return;
+  }
+
+  if (unit.x === x && unit.y === y) {
+    addLog("[警告] 現在地は移動先に選べませぬ。", "sys");
     return;
   }
 

@@ -230,6 +230,7 @@ function addActionHints(cells) {
     const unit = game.units.find((u) => u.id === game.activeUnitId);
     if (!unit) return;
     forEachBoardCell((x, y) => {
+      if (unit.x === x && unit.y === y) return;
       if (Math.abs(unit.x - x) <= 1 && Math.abs(unit.y - y) <= 1) {
         cells[y * BOARD_SIZE + x].classList.add("move-option");
       }
