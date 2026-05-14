@@ -200,7 +200,7 @@ async function executeTurn() {
   const result = await resolveTurnPhased(addLog, (phaseLabel) => {
     game.resolutionPhase = phaseLabel;
     renderBattle();
-  }, 1000);
+  }, 500);
   game.isResolving = false;
   game.resolutionPhase = "";
   document.getElementById("execute-btn").disabled = false;
