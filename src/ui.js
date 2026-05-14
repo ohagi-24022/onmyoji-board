@@ -11,6 +11,8 @@ export const el = {
   btnStartBattle: document.getElementById("btn-start-battle"),
   summonPanel: document.getElementById("summon-panel"),
   unitInfo: document.getElementById("unit-info"),
+  turnIndicator: document.getElementById("turn-indicator"),
+  planList: document.getElementById("plan-list"),
   resultOverlay: document.getElementById("result-overlay"),
   resultTitle: document.getElementById("result-title"),
   resultDesc: document.getElementById("result-desc")
@@ -19,6 +21,7 @@ export const el = {
 export function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((screen) => screen.classList.remove("active"));
   document.getElementById(screenId).classList.add("active");
+  document.getElementById("app-container").dataset.screen = screenId;
 }
 
 export function addLog(msg, type = "") {
@@ -87,8 +90,10 @@ export function renderBattle() {
     .reduce((sum, s) => sum + s.cost, 0);
   document.getElementById("val-mp-player").innerText = game.mp.player - currentReservedMP;
   document.getElementById("val-mp-enemy").innerText = game.mp.enemy;
+  el.turnIndicator.innerText = `第${game.turn}ターン`;
 
   updateUnitInfo();
+  updatePlanList();
   if (!game.isResolving) {
     addEnemyPredictions(cells);
     addActionHints(cells);
@@ -122,6 +127,43 @@ export function renderBattle() {
     if (game.planned[unit.id]?.move) cells[game.planned[unit.id].move.y * BOARD_SIZE + game.planned[unit.id].move.x].classList.add("move-target");
     if (game.planned[unit.id]?.attack) cells[game.planned[unit.id].attack.y * BOARD_SIZE + game.planned[unit.id].attack.x].classList.add("attack-target");
   });
+}
+
+function updatePlanList() {
+  const rows = [];
+
+  game.units
+    .filter((unit) => unit.owner === "player")
+    .forEach((unit) => {
+      const plan = game.planned[unit.id];
+      if (!plan) return;
+      const actions = [];
+      if (plan.move) actions.push(`移動(${plan.move.x + 1},${plan.move.y + 1})`);
+      if (plan.attack) actions.push(`術(${plan.attack.x + 1},${plan.attack.y + 1})`);
+      if (plan.possess) actions.push("憑依");
+      if (actions.length > 0) rows.push({ name: unit.name, actions });
+    });
+
+  game.plannedSummons
+    .filter((summon) => summon.owner === "player")
+    .forEach((summon) => {
+      const template = SHIKIGAMI_MASTER.find((m) => m.id === summon.templateId);
+      rows.push({ name: template?.name ?? "式神", actions: [`召喚(${summon.x + 1},${summon.y + 1})`] });
+    });
+
+  if (rows.length === 0) {
+    el.planList.innerHTML = '<div class="plan-empty">予約なし</div>';
+    return;
+  }
+
+  el.planList.innerHTML = rows
+    .map((row) => `
+      <div class="plan-row">
+        <span class="plan-unit">${row.name}</span>
+        <span class="plan-actions">${row.actions.join(" / ")}</span>
+      </div>
+    `)
+    .join("");
 }
 
 function addPlayerPlanMarkers(cells) {

@@ -89,26 +89,45 @@
         <h2>陰陽盤上戦記</h2>
         <button class="small-btn" data-screen="screen-title">タイトルへ戻る</button>
       </div>
-      <div id="board"></div>
+      <div class="battle-layout">
+        <div class="board-area">
+          <div id="board"></div>
+        </div>
 
-      <div id="ui-panel">
-        <div class="resource-bar">
-          <span class="mp-player">陣 呪力: <span id="val-mp-player">5</span></span>
-          <span class="mp-enemy">敵 呪力: <span id="val-mp-enemy">5</span></span>
+        <div class="side-area">
+          <div id="ui-panel">
+            <div class="resource-bar">
+              <span class="mp-player">陣 呪力: <span id="val-mp-player">5</span></span>
+              <span class="mp-enemy">敵 呪力: <span id="val-mp-enemy">5</span></span>
+            </div>
+            <div class="battle-status-row">
+              <div id="turn-indicator">第1ターン</div>
+              <div class="prediction-legend">
+                <span><i class="legend-dot legend-enemy-move"></i>敵移動</span>
+                <span><i class="legend-dot legend-enemy-attack"></i>敵術</span>
+                <span><i class="legend-dot legend-enemy-summon"></i>敵召喚</span>
+                <span><i class="legend-dot legend-enemy-unknown"></i>敵?</span>
+              </div>
+            </div>
+            <div id="unit-info">采配を下す式神を選べ</div>
+            <div id="summon-panel"></div>
+            <div class="btn-group">
+              <button id="btn-move" class="mode-btn">移動</button>
+              <button id="btn-attack" class="mode-btn">術</button>
+              <button id="btn-possess" class="mode-btn">憑依</button>
+              <button id="btn-summon" class="mode-btn">召喚</button>
+              <button id="btn-cancel" class="mode-btn">取消</button>
+            </div>
+            <div id="plan-list" class="plan-list">
+              <div class="plan-empty">予約なし</div>
+            </div>
+            <button id="execute-btn">ターン確定</button>
+          </div>
+
+          <div id="log"></div>
         </div>
-        <div id="unit-info">采配を下す式神を選べ</div>
-        <div id="summon-panel"></div>
-        <div class="btn-group">
-          <button id="btn-move" class="mode-btn">移動</button>
-          <button id="btn-attack" class="mode-btn">術</button>
-          <button id="btn-possess" class="mode-btn">憑依</button>
-          <button id="btn-summon" class="mode-btn">召喚</button>
-          <button id="btn-cancel" class="mode-btn">取消</button>
-        </div>
-        <button id="execute-btn">ターン確定</button>
       </div>
 
-      <div id="log"></div>
       <div id="result-overlay">
         <div id="result-title"></div>
         <div id="result-desc"></div>
