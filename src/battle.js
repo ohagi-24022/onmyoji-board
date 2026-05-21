@@ -96,7 +96,7 @@ function handleCellClick(x, y) {
 
   if (currentState === "IDLE") handleIdleClick(unit);
   else if (currentState === "SELECTING_MOVE") {
-    if (unit && unit.owner === "player" && game.planned[unit.id]?.move) {
+    if (unit && unit.id === game.activeUnitId && game.planned[unit.id]?.move) {
       game.activeUnitId = unit.id;
       game.uiState = "SELECTING_ATTACK";
       el.summonPanel.style.display = "none";
