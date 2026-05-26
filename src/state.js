@@ -13,6 +13,7 @@ export const game = {
   unitCounter: INITIAL_UNITS.length,
   turn: 1,
   isResolving: false,
+  skipResolution: false,
   resolutionPhase: "",
   turnFlags: { leaderDamagedEnemy: { player: false, enemy: false } }
 };
@@ -29,6 +30,7 @@ export function resetBattleState() {
   game.unitCounter = INITIAL_UNITS.length;
   game.turn = 1;
   game.isResolving = false;
+  game.skipResolution = false;
   game.resolutionPhase = "";
   game.turnFlags = { leaderDamagedEnemy: { player: false, enemy: false } };
 }

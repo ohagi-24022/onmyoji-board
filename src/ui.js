@@ -1,5 +1,5 @@
 import { BOARD_SIZE, SHIKIGAMI_MASTER } from "./data.js";
-import { getEffectiveStats, getEnemyActionPredictions } from "./rules.js";
+import { getEffectiveStats, getEnemyActionPredictions, getTerrainAt } from "./rules.js";
 import { game } from "./state.js";
 
 export const el = {
@@ -83,6 +83,7 @@ export function updateDeckStatus() {
 
 export function renderBattle() {
   const cells = document.querySelectorAll(".cell");
+  el.board.classList.toggle("resolving", game.isResolving);
   cells.forEach((cell) => {
     cell.innerHTML = "";
     cell.className = "cell";
@@ -96,7 +97,7 @@ export function renderBattle() {
   el.turnIndicator.innerText = `第${game.turn}ターン`;
 
   updateUnitInfo();
-  updatePlanList();
+  updatePlanListV2();
   if (!game.isResolving) {
     addEnemyPredictions(cells);
     addActionHints(cells);
@@ -183,6 +184,61 @@ function updatePlanList() {
       </div>
     `)
     .join("");
+}
+
+function updatePlanListV2() {
+  const rows = [];
+
+  game.units
+    .filter((unit) => unit.owner === "player")
+    .forEach((unit) => {
+      const plan = game.planned[unit.id];
+      if (!plan) return;
+      if (plan.move) rows.push({ unit: unit.name, label: `移動(${plan.move.x + 1},${plan.move.y + 1})`, action: "move", unitId: unit.id });
+      if (plan.attack) rows.push({ unit: unit.name, label: `術(${plan.attack.x + 1},${plan.attack.y + 1})`, action: "attack", unitId: unit.id });
+      if (plan.possess) rows.push({ unit: unit.name, label: "憑依", action: "possess", unitId: unit.id });
+      if (plan.ougi) rows.push({ unit: unit.name, label: `奥義(${plan.ougi.x + 1},${plan.ougi.y + 1})`, action: "ougi", unitId: unit.id });
+    });
+
+  game.plannedSummons.forEach((summon, index) => {
+    if (summon.owner !== "player") return;
+    const template = SHIKIGAMI_MASTER.find((m) => m.id === summon.templateId);
+    rows.push({ unit: template?.name ?? "式神", label: `召喚(${summon.x + 1},${summon.y + 1})`, action: "summon", index });
+  });
+
+  if (rows.length === 0) {
+    el.planList.innerHTML = '<div class="plan-empty">予約なし</div>';
+    return;
+  }
+
+  el.planList.innerHTML = rows
+    .map((row) => `
+      <div class="plan-row">
+        <span class="plan-unit">${escapeHtml(row.unit)}</span>
+        <span class="plan-actions">${escapeHtml(row.label)}</span>
+        <button class="plan-cancel" data-action="${row.action}" data-unit-id="${row.unitId ?? ""}" data-index="${row.index ?? ""}" title="この予約を取り消す">×</button>
+      </div>
+    `)
+    .join("");
+
+  el.planList.querySelectorAll(".plan-cancel").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const index = button.dataset.index === "" ? undefined : Number(button.dataset.index);
+      window.dispatchEvent(new CustomEvent("cancel-plan-action", {
+        detail: { action: button.dataset.action, unitId: button.dataset.unitId, index }
+      }));
+    });
+  });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function addPlayerPlanMarkers(cells) {
@@ -276,7 +332,10 @@ function addActionHints(cells) {
   }
 
   if (game.uiState === "SELECTING_OUGI_TARGET") {
+    const leader = game.units.find((u) => u.id === game.activeUnitId && u.isLeader);
+    if (!leader) return;
     forEachBoardCell((x, y) => {
+      if (!isOugiTargetOption(leader, x, y)) return;
       cells[y * BOARD_SIZE + x].classList.add("ougi-option");
     });
   }
@@ -289,6 +348,7 @@ function addActionHints(cells) {
       if (Math.abs(origin.x - x) > 1 || Math.abs(origin.y - y) > 1) return;
       if (isProjectedOccupied(x, y)) return;
       if (game.plannedSummons.some((summon) => summon.x === x && summon.y === y)) return;
+      if (getTerrainAt(x, y)?.type === "blocked") return;
       cells[y * BOARD_SIZE + x].classList.add("summon-option");
     });
   }
@@ -306,6 +366,19 @@ function isProjectedOccupied(x, y) {
     const py = game.planned[unit.id]?.move ? game.planned[unit.id].move.y : unit.y;
     return px === x && py === y && !game.planned[unit.id]?.possess;
   });
+}
+
+function getOugiId(ougiName) {
+  return SHIKIGAMI_MASTER.find((template) => template.ougi === ougiName)?.id ?? "";
+}
+
+function isOugiTargetOption(leader, x, y) {
+  const id = getOugiId(leader.ougi);
+  if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
+  if (id === "s_byakko") return !isProjectedOccupied(x, y) && getTerrainAt(x, y)?.type !== "blocked";
+  if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
+  if (id === "s_sujaku") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner);
+  return true;
 }
 
 function updateUnitInfo() {

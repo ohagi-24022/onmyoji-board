@@ -168,7 +168,8 @@ function findEnemySummonCell(enemy, closestPlayer) {
       if (x === enemy.x && y === enemy.y) continue;
       const occupied = game.units.some((unit) => unit.x === x && unit.y === y);
       const reserved = game.plannedSummons.some((summon) => summon.x === x && summon.y === y);
-      if (!occupied && !reserved) {
+      const blocked = getTerrainAt(x, y)?.type === "blocked";
+      if (!occupied && !reserved && !blocked) {
         candidates.push({ x, y, distance: Math.max(Math.abs(closestPlayer.x - x), Math.abs(closestPlayer.y - y)) });
       }
     }
@@ -224,7 +225,7 @@ export function resolveTurn(addLog) {
   resolveMovementAndMana();
   resolvePossession(addLog);
   resolveAttacks(addLog);
-  resolveOugi(addLog);
+  resolveOugiFixed(addLog);
   resolveSummons(addLog);
   resolveTerrainAndStatuses(addLog);
 
@@ -236,37 +237,37 @@ export function resolveTurn(addLog) {
   return result;
 }
 
-export async function resolveTurnPhased(addLog, onPhase, delayMs = 550) {
+export async function resolveTurnPhased(addLog, onPhase, delayMs = 550, shouldSkip = () => false) {
   addLog("=== ターン一斉解決 ===", "sys");
   game.units.forEach((u) => { u.buffAtk = 0; });
 
   onPhase("解決中: 激突判定");
   resolveCollisions(addLog);
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 移動と呪力獲得");
   resolveMovementAndMana();
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 憑依");
   resolvePossession(addLog);
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 術");
   resolveAttacks(addLog);
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 奥義");
-  resolveOugi(addLog);
-  await wait(delayMs);
+  resolveOugiFixed(addLog);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 召喚");
   resolveSummons(addLog);
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 地形・状態異常");
   resolveTerrainAndStatuses(addLog);
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
 
   onPhase("解決中: 撃破確認");
   const result = removeDefeatedUnits(addLog);
@@ -274,12 +275,23 @@ export async function resolveTurnPhased(addLog, onPhase, delayMs = 550) {
   game.activeUnitId = null;
   game.uiState = "IDLE";
   game.turn++;
-  await wait(delayMs);
+  await wait(delayMs, shouldSkip);
   return result;
 }
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function wait(ms, shouldSkip = () => false) {
+  if (shouldSkip()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      if (shouldSkip() || Date.now() - started >= ms) {
+        resolve();
+        return;
+      }
+      setTimeout(tick, 40);
+    };
+    tick();
+  });
 }
 
 function resolveCollisions(addLog) {
@@ -341,7 +353,7 @@ function resolveCollisions(addLog) {
   collidedUnitIds.forEach((id) => {
     const unit = game.units.find((u) => u.id === id);
     if (!unit) return;
-    unit.hp -= GAME_CONFIG.DAMAGE.collision;
+    unit.hp = Math.max(0, unit.hp - GAME_CONFIG.DAMAGE.collision);
     addLog(` ＞ ${getUnitLogName(unit)} に${GAME_CONFIG.DAMAGE.collision}の痛手!`, "atk");
   });
 }
@@ -350,6 +362,7 @@ function resolveMovementAndMana() {
   const turnMpGain = { player: GAME_CONFIG.MP_REWARD.turn_end, enemy: GAME_CONFIG.MP_REWARD.turn_end };
 
   game.units.forEach((unit) => {
+    if (unit.hp <= 0) return;
     const prevX = unit.x;
     const prevY = unit.y;
     if (game.planned[unit.id]?.move) {
@@ -458,7 +471,7 @@ function resolveAttacks(addLog) {
         msg = "(軽減...)";
       }
       if (target.damageReduction) dmg = Math.max(0, dmg - target.damageReduction);
-      target.hp -= dmg;
+      target.hp = Math.max(0, target.hp - dmg);
       if (unit.isLeader && dmg > 0) game.turnFlags.leaderDamagedEnemy[unit.owner] = true;
       applyStatusEffect(unit, target, addLog);
       if (unit.knockback) knockbackTarget(unit, target, addLog);
@@ -499,12 +512,117 @@ function knockbackTarget(attacker, target, addLog) {
   addLog(`【後退】${getUnitLogName(target)} は1マス押し戻された。`, "sys");
 }
 
+function resolveOugiFixed(addLog) {
+  game.units.forEach((unit) => {
+    const plot = game.planned[unit.id]?.ougi;
+    if (!plot || !unit.isLeader || unit.ougiUsed || unit.hp <= 0) return;
+
+    const ougiId = getOugiId(unit.ougi);
+    const { x, y } = plot;
+    unit.ougiUsed = true;
+
+    if (ougiId === "s_genbu") {
+      unit.invulnerable = 2;
+      forArea(unit.x, unit.y, 1, (tx, ty) => {
+        if (tx === unit.x && ty === unit.y) return;
+        if (game.units.some((target) => target.x === tx && target.y === ty)) return;
+        if (getTerrainAt(tx, ty)) return;
+        game.terrain.push({ x: tx, y: ty, type: "blocked", label: "wall", temporary: 2 });
+      });
+      addLog("[奥義] 絶海防壁: 周囲の空きマスに一時的な岩を作りました。", "possess");
+      return;
+    }
+
+    if (ougiId === "s_taijo") {
+      forArea(x, y, 1, (tx, ty) => addOrReplaceTerrain({ x: tx, y: ty, type: "heal", label: "heal" }));
+      addLog("[奥義] 聖域化: 指定範囲を竜脈に変えました。", "heal");
+      return;
+    }
+
+    if (ougiId === "s_tenko") {
+      const target = game.units.find((candidate) => candidate.x === x && candidate.y === y && candidate.owner !== unit.owner && !candidate.isLeader);
+      if (target) {
+        target.owner = unit.owner;
+        target.ai = undefined;
+        addLog(`[奥義] 幻惑の乗っ取り: ${target.name} を味方にしました。`, "possess");
+      } else {
+        addLog("[奥義] 幻惑の乗っ取り: 対象がいませんでした。", "sys");
+      }
+      return;
+    }
+
+    if (ougiId === "s_seiryu") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner && isOnSelectedLine(unit, target, x, y));
+      targets.forEach((target) => {
+        dealFixedDamage(target, 4, addLog, "青龍奥義");
+        if (target.hp <= 0) return;
+        target.status ??= {};
+        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+      });
+      addLog(`[奥義] 蒼天の雷撃: 直線上の敵${targets.length}体を貫きました。`, "atk");
+      return;
+    }
+
+    if (ougiId === "s_sujaku") {
+      const target = game.units.find((candidate) => candidate.x === x && candidate.y === y && candidate.owner !== unit.owner);
+      if (target) dealFixedDamage(target, 8, addLog, "朱雀奥義");
+      addOrReplaceTerrain({ x, y, type: "damage", label: "fire" });
+      addLog("[奥義] 煉獄の業火: 指定マスを瘴気地形にしました。", "atk");
+      return;
+    }
+
+    if (ougiId === "s_byakko") {
+      if (!game.units.some((target) => target.x === x && target.y === y) && getTerrainAt(x, y)?.type !== "blocked") {
+        unit.x = x;
+        unit.y = y;
+      }
+      forArea(unit.x, unit.y, 1, (tx, ty) => {
+        game.units
+          .filter((target) => target.owner !== unit.owner && target.x === tx && target.y === ty)
+          .forEach((target) => dealFixedDamage(target, 3, addLog, "白虎奥義"));
+      });
+      addLog("[奥義] 迅雷風烈: 移動して周囲を攻撃しました。", "atk");
+      return;
+    }
+
+    if (ougiId === "s_kochin") {
+      [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        const tx = x + dx;
+        const ty = y + dy;
+        if (!isInsideBoard(tx, ty)) return;
+        if (game.units.some((target) => target.x === tx && target.y === ty)) return;
+        addOrReplaceTerrain({ x: tx, y: ty, type: "blocked", label: "rock" });
+      });
+      addLog("[奥義] 地殻変動: 指定地点と十字を岩にしました。", "sys");
+      return;
+    }
+
+    if (ougiId === "s_touda") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner);
+      targets.forEach((target) => dealFixedDamage(target, 4, addLog, "騰蛇奥義"));
+      addLog(`[奥義] 焦熱地獄: 全敵${targets.length}体を攻撃しました。`, "atk");
+      return;
+    }
+
+    if (ougiId === "s_kijin") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner && target.hp > 0);
+      targets.forEach((target) => {
+        target.status ??= {};
+        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+        target.status.actionSeal = 1;
+      });
+      addLog(`[奥義] 神域展開: 全敵${targets.length}体を拘束しました。`, "possess");
+    }
+  });
+}
+
 function resolveOugi(addLog) {
   game.units.forEach((unit) => {
     const plot = game.planned[unit.id]?.ougi;
     if (!plot || !unit.isLeader || unit.ougiUsed || unit.hp <= 0) return;
     const x = plot.x;
     const y = plot.y;
+    const ougiId = getOugiId(unit.ougi);
     unit.ougiUsed = true;
 
     if (unit.ougi === "絶海防壁") {
@@ -601,12 +719,23 @@ function resolveOugi(addLog) {
 }
 
 function dealFixedDamage(target, amount, addLog, source) {
+  if (target.hp <= 0) return;
   if (target.invulnerable > 0) {
     addLog(`【${source}】${getUnitLogName(target)} は無敵で防いだ。`, "sys");
     return;
   }
-  target.hp -= amount;
+  target.hp = Math.max(0, target.hp - amount);
   addLog(`【${source}】${getUnitLogName(target)} に${amount}ダメージ。`, "atk");
+}
+
+function getOugiId(ougiName) {
+  return SHIKIGAMI_MASTER.find((template) => template.ougi === ougiName)?.id ?? "";
+}
+
+function isOnSelectedLine(unit, target, x, y) {
+  if (unit.x === x && target.x === unit.x) return target.y !== unit.y;
+  if (unit.y === y && target.y === unit.y) return target.x !== unit.x;
+  return false;
 }
 
 function isSameLine(unit, target, x, y) {
@@ -639,13 +768,16 @@ function addOrReplaceTerrain(tile) {
 function resolveSummons(addLog) {
   game.plannedSummons.forEach((summon) => {
     const isOccupied = game.units.find((u) => u.x === summon.x && u.y === summon.y);
+    const isBlocked = getTerrainAt(summon.x, summon.y)?.type === "blocked";
     const template = SHIKIGAMI_MASTER.find((m) => m.id === summon.templateId);
-    if (isOccupied) {
+    const owner = summon.owner ?? "player";
+    const leaderAlive = game.units.some((unit) => unit.owner === owner && unit.isLeader && unit.hp > 0);
+    if (!leaderAlive) return;
+    if (isOccupied || isBlocked) {
       addLog("【召喚失敗】その場所には既に者がおり召喚できなかった", "sys");
       return;
     }
 
-    const owner = summon.owner ?? "player";
     game.mp[owner] -= summon.cost;
     game.unitCounter++;
     game.units.push({
@@ -673,6 +805,7 @@ function resolveSummons(addLog) {
 
 function resolveTerrainAndStatuses(addLog) {
   game.units.forEach((unit) => {
+    if (unit.hp <= 0) return;
     const tile = getTerrainAt(unit.x, unit.y);
     if (tile?.type === "heal") {
       unit.hp += GAME_CONFIG.TERRAIN.heal;
@@ -680,7 +813,7 @@ function resolveTerrainAndStatuses(addLog) {
       addLog(`【龍脈】${getUnitLogName(unit)} がHP+${GAME_CONFIG.TERRAIN.heal}、呪力+${GAME_CONFIG.TERRAIN.mp}`, "heal");
     }
     if (tile?.type === "damage") {
-      unit.hp -= GAME_CONFIG.TERRAIN.damage;
+      unit.hp = Math.max(0, unit.hp - GAME_CONFIG.TERRAIN.damage);
       addLog(`【瘴気】${getUnitLogName(unit)} に${GAME_CONFIG.TERRAIN.damage}ダメージ。`, "atk");
     }
     if (unit.regen) {
@@ -688,7 +821,7 @@ function resolveTerrainAndStatuses(addLog) {
       addLog(`【加護】${getUnitLogName(unit)} がHP+${unit.regen}回復。`, "heal");
     }
     if (unit.status?.poison > 0) {
-      unit.hp -= GAME_CONFIG.STATUS.poison_damage;
+      unit.hp = Math.max(0, unit.hp - GAME_CONFIG.STATUS.poison_damage);
       unit.status.poison--;
       addLog(`【猛毒】${getUnitLogName(unit)} に${GAME_CONFIG.STATUS.poison_damage}ダメージ。`, "atk");
     }
@@ -701,7 +834,7 @@ function resolveTerrainAndStatuses(addLog) {
     .filter((tile) => tile.temporary === undefined || tile.temporary > 0);
 }
 
-function getTerrainAt(x, y) {
+export function getTerrainAt(x, y) {
   return game.terrain.find((tile) => tile.x === x && tile.y === y);
 }
 

@@ -1,7 +1,9 @@
 import { BOARD_SIZE, SHIKIGAMI_MASTER } from "./data.js";
-import { getEffectiveStats, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
+import { getEffectiveStats, getTerrainAt, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
 import { game, resetBattleState } from "./state.js";
 import { addLog, createBoard, el, renderBattle, showResult, showScreen } from "./ui.js";
+
+let planCancelListenerBound = false;
 
 export function startBattle() {
   buildSummonPanel();
@@ -39,6 +41,10 @@ function bindBattleButtons() {
   };
   document.getElementById("btn-cancel").onclick = cancelActions;
   document.getElementById("execute-btn").onclick = executeTurn;
+  if (!planCancelListenerBound) {
+    window.addEventListener("cancel-plan-action", (event) => cancelPlannedAction(event.detail));
+    planCancelListenerBound = true;
+  }
 }
 
 function setMode(mode) {
@@ -76,6 +82,41 @@ function cancelActions() {
   renderBattle();
 }
 
+function cancelPlannedAction(detail) {
+  if (game.isResolving) return;
+  if (detail.action === "summon") {
+    game.plannedSummons.splice(detail.index, 1);
+    renderBattle();
+    return;
+  }
+
+  const plan = game.planned[detail.unitId];
+  if (!plan) return;
+  if (detail.action === "move") plan.move = null;
+  if (detail.action === "attack") plan.attack = null;
+  if (detail.action === "possess") plan.possess = false;
+  if (detail.action === "ougi") plan.ougi = null;
+  if (!plan.move && !plan.attack && !plan.possess && !plan.ougi) delete game.planned[detail.unitId];
+  renderBattle();
+}
+
+function getOugiId(ougiName) {
+  return SHIKIGAMI_MASTER.find((template) => template.ougi === ougiName)?.id ?? "";
+}
+
+function isImmediateOugi(ougiName) {
+  return ["s_genbu", "s_touda", "s_kijin"].includes(getOugiId(ougiName));
+}
+
+function isValidOugiTarget(leader, x, y) {
+  const id = getOugiId(leader.ougi);
+  if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
+  if (id === "s_byakko") return !game.units.some((unit) => unit.x === x && unit.y === y) && getTerrainAt(x, y)?.type !== "blocked";
+  if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
+  if (id === "s_sujaku") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner);
+  return true;
+}
+
 function startSummon(templateId) {
   const template = SHIKIGAMI_MASTER.find((m) => m.id === templateId);
   const currentReservedMP = game.plannedSummons
@@ -92,6 +133,7 @@ function startSummon(templateId) {
 }
 
 function handleCellClick(x, y) {
+  if (game.isResolving) return;
   const unit = game.units.find((u) => u.x === x && u.y === y);
   const currentState = game.uiState;
 
@@ -124,6 +166,14 @@ function startOugi() {
   }
   game.activeUnitId = leader.id;
   game.planned[leader.id] ??= { move: null, attack: null, possess: false };
+  if (isImmediateOugi(leader.ougi)) {
+    game.planned[leader.id].ougi = { x: leader.x, y: leader.y, name: leader.ougi };
+    game.uiState = "IDLE";
+    el.summonPanel.style.display = "none";
+    addLog(`【予約・奥義】${leader.ougi}`, "possess");
+    renderBattle();
+    return;
+  }
   game.uiState = "SELECTING_OUGI_TARGET";
   el.summonPanel.style.display = "none";
   el.unitInfo.innerText = `【奥義】${leader.ougi} の対象マスを選択`;
@@ -220,6 +270,10 @@ function selectOugiTarget(x, y) {
     game.uiState = "IDLE";
     return;
   }
+  if (!isValidOugiTarget(leader, x, y)) {
+    addLog("[警告] その奥義では指定できないマスです。", "sys");
+    return;
+  }
   game.planned[leader.id] ??= { move: null, attack: null, possess: false };
   game.planned[leader.id].ougi = { x, y, name: leader.ougi };
   game.uiState = "IDLE";
@@ -241,8 +295,9 @@ function selectSummonTarget(x, y) {
     return px === x && py === y && !game.planned[unit.id]?.possess;
   });
   const alreadySummoned = game.plannedSummons.find((s) => s.x === x && s.y === y);
+  const isBlocked = getTerrainAt(x, y)?.type === "blocked";
 
-  if (isProjectedOccupied || alreadySummoned) {
+  if (isProjectedOccupied || alreadySummoned || isBlocked) {
     addLog("[警告] そのマスは移動後のユニットで埋まるか、既に予約済です。", "sys");
     return;
   }
@@ -255,17 +310,23 @@ function selectSummonTarget(x, y) {
 }
 
 async function executeTurn() {
-  if (game.isResolving) return;
+  if (game.isResolving) {
+    game.skipResolution = true;
+    document.getElementById("execute-btn").innerText = "スキップ中...";
+    return;
+  }
   game.isResolving = true;
+  game.skipResolution = false;
   game.resolutionPhase = "解決準備中";
-  document.getElementById("execute-btn").disabled = true;
-  document.getElementById("execute-btn").innerText = "解決中...";
+  document.getElementById("execute-btn").disabled = false;
+  document.getElementById("execute-btn").innerText = "処理をスキップ";
   planEnemyActionsAI();
   const result = await resolveTurnPhased(addLog, (phaseLabel) => {
     game.resolutionPhase = phaseLabel;
     renderBattle();
-  }, 900);
+  }, 900, () => game.skipResolution);
   game.isResolving = false;
+  game.skipResolution = false;
   game.resolutionPhase = "";
   document.getElementById("execute-btn").disabled = false;
   document.getElementById("execute-btn").innerText = "ターン確定";
