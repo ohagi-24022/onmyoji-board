@@ -132,13 +132,29 @@ function selectMove(x, y) {
     return;
   }
 
+  if ((unit.move ?? 1) <= 0) {
+    addLog(`[警告] ${unit.name} は移動できませぬ。`, "sys");
+    return;
+  }
+
+  if (unit.status?.bind > 0) {
+    addLog(`[警告] ${unit.name} は拘束されており移動できませぬ。`, "sys");
+    return;
+  }
+
   if (unit.x === x && unit.y === y) {
     addLog("[警告] 現在地は移動先に選べませぬ。", "sys");
     return;
   }
 
-  if (Math.abs(unit.x - x) > 1 || Math.abs(unit.y - y) > 1) {
-    addLog("[警告] 移動は一歩のみです。", "sys");
+  const moveRange = unit.move ?? 1;
+  if (Math.abs(unit.x - x) > moveRange || Math.abs(unit.y - y) > moveRange) {
+    addLog(`[警告] ${unit.name} の移動範囲は${moveRange}マスです。`, "sys");
+    return;
+  }
+
+  if (game.terrain.find((tile) => tile.x === x && tile.y === y)?.type === "blocked") {
+    addLog("[警告] 進入不可マスへは移動できませぬ。", "sys");
     return;
   }
 

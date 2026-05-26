@@ -55,7 +55,7 @@ export function renderDeckScreen(onSelectCard) {
       <div class="attr-badge attr-${shikigami.element}" style="position:static; margin: 0 auto 4px;">${shikigami.element}</div>
       <div class="dc-name">${shikigami.name}</div>
       <div class="dc-type ${shikigami.isTensho ? "tensho" : ""}">${shikigami.isTensho ? "【十二天将】" : "【通常式神】"}</div>
-      <div class="dc-stats">攻${shikigami.atk} HP${shikigami.hp} 射${shikigami.reach}</div>
+      <div class="dc-stats">攻${shikigami.atk} HP${shikigami.hp} 射${shikigami.reach} 移${shikigami.move}</div>
       <div class="dc-cost">呪力:${shikigami.cost}</div>
       <div style="font-size:9px; color:#888; margin-top:4px;">${shikigami.desc}</div>
     `;
@@ -68,13 +68,16 @@ export function renderDeckScreen(onSelectCard) {
 
 export function updateDeckStatus() {
   const count = game.playerDeckIds.length;
-  el.deckStatus.innerText = `選択中: ${count} / 3`;
-  el.btnStartBattle.disabled = count !== 3;
+  const normalCount = game.playerDeckIds.filter((id) => !SHIKIGAMI_MASTER.find((m) => m.id === id).isTensho).length;
+  const tenshoCount = game.playerDeckIds.filter((id) => SHIKIGAMI_MASTER.find((m) => m.id === id).isTensho).length;
+  el.deckStatus.innerText = `選択中: 通常${normalCount} / 3・十二天将${tenshoCount} / 1`;
+  el.btnStartBattle.disabled = normalCount !== 3 || tenshoCount !== 1;
 
   const hasTensho = game.playerDeckIds.some((id) => SHIKIGAMI_MASTER.find((m) => m.id === id).isTensho);
   document.querySelectorAll(".deck-card").forEach((card) => {
     const shikigami = SHIKIGAMI_MASTER.find((m) => m.id === card.dataset.id);
-    card.classList.toggle("disabled", shikigami.isTensho && hasTensho && !card.classList.contains("selected"));
+    const normalFull = normalCount >= 3;
+    card.classList.toggle("disabled", (shikigami.isTensho && hasTensho && !card.classList.contains("selected")) || (!shikigami.isTensho && normalFull && !card.classList.contains("selected")));
   });
 }
 
@@ -105,6 +108,7 @@ export function renderBattle() {
   });
 
   addPlayerPlanMarkers(cells);
+  addTerrainMarkers(cells);
 
   game.units.forEach((unit) => {
     const cell = cells[unit.y * BOARD_SIZE + unit.x];
@@ -122,10 +126,24 @@ export function renderBattle() {
       <div class="u-name">${unit.name}</div>
       <div class="u-stats">攻${dispAtk} HP${unit.hp}</div>
     `;
+    if (unit.status?.poison > 0 || unit.status?.bind > 0) {
+      div.innerHTML += `<div class="status-row">${unit.status?.poison > 0 ? "毒" : ""}${unit.status?.bind > 0 ? "縛" : ""}</div>`;
+    }
     cell.appendChild(div);
 
     if (game.planned[unit.id]?.move) cells[game.planned[unit.id].move.y * BOARD_SIZE + game.planned[unit.id].move.x].classList.add("move-target");
     if (game.planned[unit.id]?.attack) cells[game.planned[unit.id].attack.y * BOARD_SIZE + game.planned[unit.id].attack.x].classList.add("attack-target");
+  });
+}
+
+function addTerrainMarkers(cells) {
+  game.terrain.forEach((tile) => {
+    const cell = cells[tile.y * BOARD_SIZE + tile.x];
+    cell.classList.add(`terrain-${tile.type}`);
+    const marker = document.createElement("div");
+    marker.className = "terrain-label";
+    marker.innerText = tile.label;
+    cell.appendChild(marker);
   });
 }
 
@@ -229,9 +247,12 @@ function addActionHints(cells) {
   if (game.uiState === "SELECTING_MOVE") {
     const unit = game.units.find((u) => u.id === game.activeUnitId);
     if (!unit) return;
+    if ((unit.move ?? 1) <= 0 || unit.status?.bind > 0) return;
     forEachBoardCell((x, y) => {
       if (unit.x === x && unit.y === y) return;
-      if (Math.abs(unit.x - x) <= 1 && Math.abs(unit.y - y) <= 1) {
+      const moveRange = unit.move ?? 1;
+      if (game.terrain.find((tile) => tile.x === x && tile.y === y)?.type === "blocked") return;
+      if (Math.abs(unit.x - x) <= moveRange && Math.abs(unit.y - y) <= moveRange) {
         cells[y * BOARD_SIZE + x].classList.add("move-option");
       }
     });
@@ -301,7 +322,8 @@ function updateUnitInfo() {
   const reachText = stats.effReach > activeUnit.reach ? `${stats.effReach}(予測)` : stats.effReach;
 
   if (game.uiState === "SELECTING_MOVE") {
-    el.unitInfo.innerText = `移動先を選択: ${activeUnit.name} (周囲1マス)`;
+    const moveText = activeUnit.status?.bind > 0 ? "拘束中" : `移動${activeUnit.move ?? 1}`;
+    el.unitInfo.innerText = `移動先を選択: ${activeUnit.name} (${moveText})`;
     document.getElementById("btn-move").classList.add("active");
     return;
   }
@@ -312,7 +334,7 @@ function updateUnitInfo() {
     return;
   }
 
-  el.unitInfo.innerText = `選択中: ${activeUnit.name} (攻${atkText} / 射${reachText} / 属:${activeUnit.element})`;
+  el.unitInfo.innerText = `選択中: ${activeUnit.name} (攻${atkText} / 射${reachText} / 移${activeUnit.move ?? 1} / 属:${activeUnit.element})`;
 }
 
 export function showResult(result) {

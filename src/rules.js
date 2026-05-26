@@ -4,6 +4,7 @@ import { game } from "./state.js";
 export function getEffectiveStats(unit) {
   let effAtk = unit.atk + unit.buffAtk;
   let effReach = unit.reach;
+  let effMove = unit.move ?? 1;
 
   if (unit.isLeader) {
     game.units.forEach((ally) => {
@@ -20,7 +21,7 @@ export function getEffectiveStats(unit) {
     });
   }
 
-  return { effAtk, effReach };
+  return { effAtk, effReach, effMove };
 }
 
 export function getUnitLogName(unit) {
@@ -88,10 +89,22 @@ function buildEnemyPlan(enemy, players) {
     };
   }
 
-  const targetX = enemy.x + Math.sign(closestPlayer.x - enemy.x);
-  const targetY = enemy.y + Math.sign(closestPlayer.y - enemy.y);
+  if (enemy.status?.bind > 0 || (enemy.move ?? 1) <= 0) {
+    return {
+      unitId: enemy.id,
+      unitName: enemy.name,
+      type: "wait",
+      move: null,
+      attack: null,
+      targetName: closestPlayer.name
+    };
+  }
+
+  const moveRange = enemy.move ?? 1;
+  const targetX = enemy.x + Math.sign(closestPlayer.x - enemy.x) * Math.min(moveRange, Math.abs(closestPlayer.x - enemy.x));
+  const targetY = enemy.y + Math.sign(closestPlayer.y - enemy.y) * Math.min(moveRange, Math.abs(closestPlayer.y - enemy.y));
   const isOccupied = game.units.find((u) => u.x === targetX && u.y === targetY);
-  if (isOccupied) {
+  if (isOccupied || getTerrainAt(targetX, targetY)?.type === "blocked") {
     return {
       unitId: enemy.id,
       unitName: enemy.name,
@@ -202,6 +215,7 @@ export function resolveTurn(addLog) {
   resolvePossession(addLog);
   resolveAttacks(addLog);
   resolveSummons(addLog);
+  resolveTerrainAndStatuses(addLog);
 
   const result = removeDefeatedUnits(addLog);
   game.planned = {};
@@ -233,6 +247,10 @@ export async function resolveTurnPhased(addLog, onPhase, delayMs = 550) {
 
   onPhase("解決中: 召喚");
   resolveSummons(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 地形・状態異常");
+  resolveTerrainAndStatuses(addLog);
   await wait(delayMs);
 
   onPhase("解決中: 撃破確認");
@@ -290,6 +308,16 @@ function resolveCollisions(addLog) {
       }
     });
 
+    game.units.forEach((unit) => {
+      const move = game.planned[unit.id]?.move;
+      if (!move) return;
+      if (getTerrainAt(move.x, move.y)?.type !== "blocked") return;
+      game.planned[unit.id].move = null;
+      collidedUnitIds.add(unit.id);
+      addLog(`【激突】${getUnitLogName(unit)} は進入不可マスに弾かれた！`, "atk");
+      resolving = true;
+    });
+
     loopCount++;
   }
 
@@ -316,8 +344,17 @@ function resolveMovementAndMana() {
     turnMpGain[unit.owner] += calculateManaGain(unit, prevX, prevY);
   });
 
+  game.units.forEach((unit) => {
+    if (!unit.isLeader) return;
+    const isPlayerPushed = unit.owner === "player" && unit.y <= Math.floor(BOARD_SIZE / 2);
+    const isEnemyPushed = unit.owner === "enemy" && unit.y >= Math.floor(BOARD_SIZE / 2);
+    if (isPlayerPushed || isEnemyPushed) turnMpGain[unit.owner] += GAME_CONFIG.MP_REWARD.line_push;
+    if (game.turnFlags.leaderDamagedEnemy[unit.owner]) turnMpGain[unit.owner] += GAME_CONFIG.MP_REWARD.leader_hit;
+  });
+
   game.mp.player += turnMpGain.player;
   game.mp.enemy += turnMpGain.enemy;
+  game.turnFlags.leaderDamagedEnemy = { player: false, enemy: false };
 }
 
 function resolvePossession(addLog) {
@@ -331,6 +368,8 @@ function resolvePossession(addLog) {
     leader.hp += hpBonus;
     leader.atk += atkBonus;
     leader.element = unit.element;
+    leader.ougi = unit.ougi;
+    leader.ougiUsed = false;
 
     const extra = applyTenshoPossessionBonus(leader, unit);
     addLog(`【憑依】${getUnitLogName(unit)} が陰陽師と一体化した！ (HP+${hpBonus} / 攻+${atkBonus} / 属性:${unit.element})${extra}`, "possess");
@@ -367,6 +406,18 @@ function applyTenshoPossessionBonus(leader, unit) {
     leader.hp += 5;
     return " 【貴人の加護: 攻+3/HP+5】";
   }
+  if (unit.tenshoAbility === "regen") {
+    leader.regen = 3;
+    return " 【太常の加護: 毎ターンHP+3】";
+  }
+  if (unit.tenshoAbility === "guard") {
+    leader.damageReduction = 1;
+    return " 【勾陣の加護: ダメージ1軽減】";
+  }
+  if (unit.tenshoAbility === "knockback") {
+    leader.knockback = true;
+    return " 【天后の加護: 術命中で後退】";
+  }
   return "";
 }
 
@@ -391,7 +442,11 @@ function resolveAttacks(addLog) {
         dmg = Math.floor(dmg * GAME_CONFIG.DAMAGE.resist_multiplier);
         msg = "(軽減...)";
       }
+      if (target.damageReduction) dmg = Math.max(0, dmg - target.damageReduction);
       target.hp -= dmg;
+      if (unit.isLeader && dmg > 0) game.turnFlags.leaderDamagedEnemy[unit.owner] = true;
+      applyStatusEffect(unit, target, addLog);
+      if (unit.knockback) knockbackTarget(unit, target, addLog);
       addLog(`【攻撃】${getUnitLogName(unit)} → ${getUnitLogName(target)}に ${dmg}ダメージ ${msg}`, "atk");
       return;
     }
@@ -401,6 +456,32 @@ function resolveAttacks(addLog) {
       addLog(`【支援】${getUnitLogName(unit)} → ${getUnitLogName(target)}に相生の気！(次ターン攻+${GAME_CONFIG.BUFF.atk_boost})`, "heal");
     }
   });
+}
+
+function applyStatusEffect(attacker, target, addLog) {
+  if (!attacker.statusEffect || target.owner === attacker.owner) return;
+  target.status ??= {};
+  if (attacker.statusEffect === "poison") {
+    target.status.poison = 3;
+    addLog(`【猛毒】${getUnitLogName(target)} は毒に侵された。`, "sys");
+  }
+  if (attacker.statusEffect === "bind") {
+    target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+    addLog(`【拘束】${getUnitLogName(target)} は次ターン移動できない。`, "sys");
+  }
+}
+
+function knockbackTarget(attacker, target, addLog) {
+  const dx = Math.sign(target.x - attacker.x);
+  const dy = Math.sign(target.y - attacker.y);
+  const nx = target.x + dx;
+  const ny = target.y + dy;
+  if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) return;
+  if (getTerrainAt(nx, ny)?.type === "blocked") return;
+  if (game.units.some((unit) => unit.x === nx && unit.y === ny)) return;
+  target.x = nx;
+  target.y = ny;
+  addLog(`【後退】${getUnitLogName(target)} は1マス押し戻された。`, "sys");
 }
 
 function resolveSummons(addLog) {
@@ -424,8 +505,11 @@ function resolveSummons(addLog) {
       atk: template.atk,
       buffAtk: 0,
       reach: template.reach,
+      move: template.move,
       isTensho: template.isTensho,
       tenshoAbility: template.tenshoAbility,
+      statusEffect: template.statusEffect,
+      ougi: template.ougi,
       ai: owner === "enemy" ? { pattern: "hunter", predictionAccuracy: 0.5 } : undefined,
       x: summon.x,
       y: summon.y
@@ -433,6 +517,35 @@ function resolveSummons(addLog) {
     addLog(`【召喚】${owner === "player" ? "味方" : "敵"}の${template.name} が戦場に顕現した！`, owner === "player" ? "heal" : "atk");
   });
   game.plannedSummons = [];
+}
+
+function resolveTerrainAndStatuses(addLog) {
+  game.units.forEach((unit) => {
+    const tile = getTerrainAt(unit.x, unit.y);
+    if (tile?.type === "heal") {
+      unit.hp += GAME_CONFIG.TERRAIN.heal;
+      game.mp[unit.owner] += GAME_CONFIG.TERRAIN.mp;
+      addLog(`【龍脈】${getUnitLogName(unit)} がHP+${GAME_CONFIG.TERRAIN.heal}、呪力+${GAME_CONFIG.TERRAIN.mp}`, "heal");
+    }
+    if (tile?.type === "damage") {
+      unit.hp -= GAME_CONFIG.TERRAIN.damage;
+      addLog(`【瘴気】${getUnitLogName(unit)} に${GAME_CONFIG.TERRAIN.damage}ダメージ。`, "atk");
+    }
+    if (unit.regen) {
+      unit.hp += unit.regen;
+      addLog(`【加護】${getUnitLogName(unit)} がHP+${unit.regen}回復。`, "heal");
+    }
+    if (unit.status?.poison > 0) {
+      unit.hp -= GAME_CONFIG.STATUS.poison_damage;
+      unit.status.poison--;
+      addLog(`【猛毒】${getUnitLogName(unit)} に${GAME_CONFIG.STATUS.poison_damage}ダメージ。`, "atk");
+    }
+    if (unit.status?.bind > 0) unit.status.bind--;
+  });
+}
+
+function getTerrainAt(x, y) {
+  return game.terrain.find((tile) => tile.x === x && tile.y === y);
 }
 
 function removeDefeatedUnits(addLog) {

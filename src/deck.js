@@ -18,9 +18,17 @@ function toggleDeckSelection(cardEl, id) {
     return;
   }
 
-  if (game.playerDeckIds.length >= 3) {
-    el.deckWarning.innerText = "※デッキは最大3体までです。";
+  if (game.playerDeckIds.length >= 4) {
+    el.deckWarning.innerText = "※デッキは通常式神3体＋十二天将1体の計4体です。";
     return;
+  }
+
+  if (!target.isTensho) {
+    const normalCount = game.playerDeckIds.filter((deckId) => !SHIKIGAMI_MASTER.find((m) => m.id === deckId).isTensho).length;
+    if (normalCount >= 3) {
+      el.deckWarning.innerText = "※通常式神は3体までです。";
+      return;
+    }
   }
 
   if (target.isTensho) {

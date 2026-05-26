@@ -50,12 +50,20 @@
           <span class="rule-number">4</span>
           <div>
             <h3>呪力と召喚</h3>
-            <p>移動や敵への接近で呪力を得ます。呪力を使うと、陰陽師の周囲に式神を召喚できます。</p>
+            <p>移動、敵への接近、陰陽師の前進、陰陽師の術命中で呪力を得ます。デッキは通常式神3体＋十二天将1体です。</p>
           </div>
         </section>
 
         <section class="rule-section">
           <span class="rule-number">5</span>
+          <div>
+            <h3>地形と状態異常</h3>
+            <p>岩は進入不可、龍脈は回復、瘴気はダメージ。猛毒は継続ダメージ、拘束は次ターンの移動を封じます。</p>
+          </div>
+        </section>
+
+        <section class="rule-section">
+          <span class="rule-number">6</span>
           <div>
             <h3>五行と支援</h3>
             <p>有利属性への術はダメージ増加。相生関係の味方へ術を使うと、次の攻撃力を強化できます。</p>
@@ -63,10 +71,10 @@
         </section>
 
         <section class="rule-section">
-          <span class="rule-number">6</span>
+          <span class="rule-number">7</span>
           <div>
             <h3>憑依</h3>
-            <p>味方式神を陰陽師へ憑依させ、HP・攻撃力・属性を引き継ぎます。十二天将は専用の加護を持ちます。</p>
+            <p>味方式神を陰陽師へ憑依させ、HP・攻撃力・属性を引き継ぎます。十二天将は専用加護と奥義を持ちます。</p>
           </div>
         </section>
       </div>
@@ -74,10 +82,10 @@
     </div>
 
     <div id="screen-deck" class="screen">
-      <h2>式神編成</h2>
+      <h2>式神編成（通常3体＋十二天将1体）</h2>
       <div id="deck-list"></div>
       <div id="deck-warning"></div>
-      <div id="deck-status">選択中: 0 / 3</div>
+      <div id="deck-status">選択中: 通常0 / 3・十二天将0 / 1</div>
       <div class="deck-actions">
         <button class="big-btn muted" data-screen="screen-title">戻る</button>
         <button id="btn-start-battle" class="big-btn" disabled>出陣</button>
