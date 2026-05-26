@@ -31,6 +31,7 @@ function bindBattleButtons() {
   document.getElementById("btn-move").onclick = () => setMode("SELECTING_MOVE");
   document.getElementById("btn-attack").onclick = () => setMode("SELECTING_ATTACK");
   document.getElementById("btn-possess").onclick = startPossession;
+  document.getElementById("btn-ougi").onclick = startOugi;
   document.getElementById("btn-summon").onclick = () => {
     game.uiState = "IDLE";
     el.summonPanel.style.display = "flex";
@@ -105,8 +106,27 @@ function handleCellClick(x, y) {
     }
   }
   else if (currentState === "SELECTING_ATTACK") selectAttack(x, y);
+  else if (currentState === "SELECTING_OUGI_TARGET") selectOugiTarget(x, y);
   else if (currentState === "SELECTING_SUMMON_TARGET") selectSummonTarget(x, y);
 
+  renderBattle();
+}
+
+function startOugi() {
+  const leader = game.units.find((u) => u.isLeader && u.owner === "player");
+  if (!leader?.ougi) {
+    addLog("[警告] 十二天将を憑依させると奥義が解放されます。", "sys");
+    return;
+  }
+  if (leader.ougiUsed) {
+    addLog("[警告] 奥義は1試合に1度のみです。", "sys");
+    return;
+  }
+  game.activeUnitId = leader.id;
+  game.planned[leader.id] ??= { move: null, attack: null, possess: false };
+  game.uiState = "SELECTING_OUGI_TARGET";
+  el.summonPanel.style.display = "none";
+  el.unitInfo.innerText = `【奥義】${leader.ougi} の対象マスを選択`;
   renderBattle();
 }
 
@@ -192,6 +212,18 @@ function selectAttack(x, y) {
   }
 
   addLog("[警告] 射程が届きませぬ。", "sys");
+}
+
+function selectOugiTarget(x, y) {
+  const leader = game.units.find((u) => u.id === game.activeUnitId && u.isLeader);
+  if (!leader?.ougi || leader.ougiUsed) {
+    game.uiState = "IDLE";
+    return;
+  }
+  game.planned[leader.id] ??= { move: null, attack: null, possess: false };
+  game.planned[leader.id].ougi = { x, y, name: leader.ougi };
+  game.uiState = "IDLE";
+  addLog(`【予約】奥義「${leader.ougi}」を構えた。`, "possess");
 }
 
 function selectSummonTarget(x, y) {

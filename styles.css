@@ -221,7 +221,7 @@ h2 {
 }
 
 .cell:hover { background-color: #ffe4c4; }
-.cell.move-option::before, .cell.attack-option::before, .cell.summon-option::before {
+.cell.move-option::before, .cell.attack-option::before, .cell.summon-option::before, .cell.ougi-option::before {
   content: "";
   position: absolute;
   inset: 6px;
@@ -233,6 +233,7 @@ h2 {
 .cell.move-option::before { background: rgba(3, 169, 244, 0.18); border: 2px dashed rgba(3, 169, 244, 0.75); }
 .cell.attack-option::before { background: rgba(244, 67, 54, 0.16); border: 2px dashed rgba(244, 67, 54, 0.75); }
 .cell.summon-option::before { background: rgba(156, 39, 176, 0.16); border: 2px dashed rgba(156, 39, 176, 0.75); }
+.cell.ougi-option::before { background: rgba(255, 179, 0, 0.18); border: 2px dashed rgba(245, 127, 23, 0.85); }
 .cell.enemy-move-prediction { box-shadow: inset 0 0 0 3px rgba(25, 118, 210, 0.45); }
 .cell.enemy-attack-prediction { box-shadow: inset 0 0 0 3px rgba(183, 28, 28, 0.5); }
 .cell.enemy-summon-prediction { box-shadow: inset 0 0 0 3px rgba(106, 27, 154, 0.5); }
@@ -308,6 +309,7 @@ h2 {
 .planned-attack-label { top: 2px; background: rgba(183, 28, 28, 0.9); }
 .planned-summon-label { bottom: 2px; background: rgba(74, 20, 140, 0.9); }
 .planned-possess-label { top: 2px; background: rgba(0, 131, 143, 0.9); }
+.planned-ougi-label { top: 18px; background: rgba(245, 127, 23, 0.95); color: #221; }
 
 .shikigami {
   position: relative;
@@ -628,7 +630,7 @@ h2 {
 
   .btn-group {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 5px;
     margin: 8px 0;
   }

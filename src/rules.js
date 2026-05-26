@@ -73,6 +73,16 @@ function buildEnemyPlan(enemy, players) {
   });
 
   if (!closestPlayer) return null;
+  if (enemy.status?.actionSeal > 0) {
+    return {
+      unitId: enemy.id,
+      unitName: enemy.name,
+      type: "wait",
+      move: null,
+      attack: null,
+      targetName: closestPlayer.name
+    };
+  }
   if (enemy.ai?.pattern === "summoner") {
     const summonPlan = buildEnemySummonPlan(enemy, closestPlayer);
     if (summonPlan) return summonPlan;
@@ -214,6 +224,7 @@ export function resolveTurn(addLog) {
   resolveMovementAndMana();
   resolvePossession(addLog);
   resolveAttacks(addLog);
+  resolveOugi(addLog);
   resolveSummons(addLog);
   resolveTerrainAndStatuses(addLog);
 
@@ -243,6 +254,10 @@ export async function resolveTurnPhased(addLog, onPhase, delayMs = 550) {
 
   onPhase("解決中: 術");
   resolveAttacks(addLog);
+  await wait(delayMs);
+
+  onPhase("解決中: 奥義");
+  resolveOugi(addLog);
   await wait(delayMs);
 
   onPhase("解決中: 召喚");
@@ -484,6 +499,143 @@ function knockbackTarget(attacker, target, addLog) {
   addLog(`【後退】${getUnitLogName(target)} は1マス押し戻された。`, "sys");
 }
 
+function resolveOugi(addLog) {
+  game.units.forEach((unit) => {
+    const plot = game.planned[unit.id]?.ougi;
+    if (!plot || !unit.isLeader || unit.ougiUsed || unit.hp <= 0) return;
+    const x = plot.x;
+    const y = plot.y;
+    unit.ougiUsed = true;
+
+    if (unit.ougi === "絶海防壁") {
+      unit.invulnerable = 2;
+      forArea(unit.x, unit.y, 1, (tx, ty) => {
+        if (tx === unit.x && ty === unit.y) return;
+        if (game.units.some((target) => target.x === tx && target.y === ty)) return;
+        addOrReplaceTerrain({ x: tx, y: ty, type: "blocked", label: "壁", temporary: 2 });
+      });
+      addLog("【奥義】絶海防壁: 周囲を壁にし、陰陽師が1ターン無敵。", "possess");
+      return;
+    }
+
+    if (unit.ougi === "聖域化") {
+      forArea(x, y, 1, (tx, ty) => addOrReplaceTerrain({ x: tx, y: ty, type: "heal", label: "龍脈" }));
+      addLog("【奥義】聖域化: 指定範囲を龍脈に変えた。", "heal");
+      return;
+    }
+
+    if (unit.ougi === "幻惑の乗っ取り") {
+      const target = game.units.find((candidate) => candidate.x === x && candidate.y === y && candidate.owner !== unit.owner && !candidate.isLeader);
+      if (target) {
+        target.owner = unit.owner;
+        target.ai = undefined;
+        addLog(`【奥義】幻惑の乗っ取り: ${target.name} の支配を奪った。`, "possess");
+      } else {
+        addLog("【奥義】幻惑の乗っ取り: 対象がいなかった。", "sys");
+      }
+      return;
+    }
+
+    if (unit.ougi === "蒼天の雷撃") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner && isSameLine(unit, target, x, y));
+      targets.forEach((target) => {
+        dealFixedDamage(target, 4, addLog, "蒼天の雷撃");
+        target.status ??= {};
+        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+      });
+      addLog(`【奥義】蒼天の雷撃: 直線上の敵${targets.length}体を貫いた。`, "atk");
+      return;
+    }
+
+    if (unit.ougi === "煉獄の業火") {
+      const target = game.units.find((candidate) => candidate.x === x && candidate.y === y && candidate.owner !== unit.owner);
+      if (target) dealFixedDamage(target, 8, addLog, "煉獄の業火");
+      addOrReplaceTerrain({ x, y, type: "damage", label: "炎上" });
+      addLog("【奥義】煉獄の業火: 指定マスを炎上地形にした。", "atk");
+      return;
+    }
+
+    if (unit.ougi === "迅雷風烈") {
+      if (!game.units.some((target) => target.x === x && target.y === y) && getTerrainAt(x, y)?.type !== "blocked") {
+        unit.x = x;
+        unit.y = y;
+      }
+      forArea(unit.x, unit.y, 1, (tx, ty) => {
+        game.units
+          .filter((target) => target.owner !== unit.owner && target.x === tx && target.y === ty)
+          .forEach((target) => dealFixedDamage(target, 3, addLog, "迅雷風烈"));
+      });
+      addLog("【奥義】迅雷風烈: ワープし周囲をなぎ払った。", "atk");
+      return;
+    }
+
+    if (unit.ougi === "地殻変動") {
+      [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        const tx = x + dx;
+        const ty = y + dy;
+        if (!isInsideBoard(tx, ty)) return;
+        if (game.units.some((target) => target.x === tx && target.y === ty)) return;
+        addOrReplaceTerrain({ x: tx, y: ty, type: "blocked", label: "岩" });
+      });
+      addLog("【奥義】地殻変動: 指定地点と十字を進入不可にした。", "sys");
+      return;
+    }
+
+    if (unit.ougi === "焦熱地獄") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner);
+      targets.forEach((target) => dealFixedDamage(target, 4, addLog, "焦熱地獄"));
+      addLog(`【奥義】焦熱地獄: 全敵${targets.length}体を焼いた。`, "atk");
+      return;
+    }
+
+    if (unit.ougi === "神域展開") {
+      const targets = game.units.filter((target) => target.owner !== unit.owner);
+      targets.forEach((target) => {
+        target.status ??= {};
+        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+        target.status.actionSeal = 1;
+      });
+      addLog(`【奥義】神域展開: 全敵${targets.length}体を拘束した。`, "possess");
+    }
+  });
+}
+
+function dealFixedDamage(target, amount, addLog, source) {
+  if (target.invulnerable > 0) {
+    addLog(`【${source}】${getUnitLogName(target)} は無敵で防いだ。`, "sys");
+    return;
+  }
+  target.hp -= amount;
+  addLog(`【${source}】${getUnitLogName(target)} に${amount}ダメージ。`, "atk");
+}
+
+function isSameLine(unit, target, x, y) {
+  if (unit.x === x && target.x === unit.x) return isBetween(target.y, unit.y, y);
+  if (unit.y === y && target.y === unit.y) return isBetween(target.x, unit.x, x);
+  return false;
+}
+
+function isBetween(value, start, end) {
+  return value >= Math.min(start, end) && value <= Math.max(start, end);
+}
+
+function forArea(cx, cy, radius, callback) {
+  for (let y = cy - radius; y <= cy + radius; y++) {
+    for (let x = cx - radius; x <= cx + radius; x++) {
+      if (isInsideBoard(x, y)) callback(x, y);
+    }
+  }
+}
+
+function isInsideBoard(x, y) {
+  return x >= 0 && y >= 0 && x < BOARD_SIZE && y < BOARD_SIZE;
+}
+
+function addOrReplaceTerrain(tile) {
+  game.terrain = game.terrain.filter((current) => current.x !== tile.x || current.y !== tile.y);
+  game.terrain.push(tile);
+}
+
 function resolveSummons(addLog) {
   game.plannedSummons.forEach((summon) => {
     const isOccupied = game.units.find((u) => u.x === summon.x && u.y === summon.y);
@@ -541,7 +693,12 @@ function resolveTerrainAndStatuses(addLog) {
       addLog(`【猛毒】${getUnitLogName(unit)} に${GAME_CONFIG.STATUS.poison_damage}ダメージ。`, "atk");
     }
     if (unit.status?.bind > 0) unit.status.bind--;
+    if (unit.status?.actionSeal > 0) unit.status.actionSeal--;
+    if (unit.invulnerable > 0) unit.invulnerable--;
   });
+  game.terrain = game.terrain
+    .map((tile) => tile.temporary ? { ...tile, temporary: tile.temporary - 1 } : tile)
+    .filter((tile) => tile.temporary === undefined || tile.temporary > 0);
 }
 
 function getTerrainAt(x, y) {

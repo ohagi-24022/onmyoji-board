@@ -159,6 +159,7 @@ function updatePlanList() {
       if (plan.move) actions.push(`移動(${plan.move.x + 1},${plan.move.y + 1})`);
       if (plan.attack) actions.push(`術(${plan.attack.x + 1},${plan.attack.y + 1})`);
       if (plan.possess) actions.push("憑依");
+      if (plan.ougi) actions.push(`奥義:${plan.ougi.name}(${plan.ougi.x + 1},${plan.ougi.y + 1})`);
       if (actions.length > 0) rows.push({ name: unit.name, actions });
     });
 
@@ -198,6 +199,9 @@ function addPlayerPlanMarkers(cells) {
       }
       if (plan.possess) {
         addPlanMarker(cells[unit.y * BOARD_SIZE + unit.x], "possess", `憑:${unit.name}`);
+      }
+      if (plan.ougi) {
+        addPlanMarker(cells[plan.ougi.y * BOARD_SIZE + plan.ougi.x], "ougi", `奥:${unit.name}`);
       }
     });
 
@@ -271,6 +275,12 @@ function addActionHints(cells) {
     });
   }
 
+  if (game.uiState === "SELECTING_OUGI_TARGET") {
+    forEachBoardCell((x, y) => {
+      cells[y * BOARD_SIZE + x].classList.add("ougi-option");
+    });
+  }
+
   if (game.uiState === "SELECTING_SUMMON_TARGET") {
     const leader = game.units.find((u) => u.isLeader && u.owner === "player");
     if (!leader) return;
@@ -334,7 +344,14 @@ function updateUnitInfo() {
     return;
   }
 
-  el.unitInfo.innerText = `選択中: ${activeUnit.name} (攻${atkText} / 射${reachText} / 移${activeUnit.move ?? 1} / 属:${activeUnit.element})`;
+  if (game.uiState === "SELECTING_OUGI_TARGET") {
+    el.unitInfo.innerText = `奥義の対象マスを選択: ${activeUnit.ougi}`;
+    document.getElementById("btn-ougi").classList.add("active");
+    return;
+  }
+
+  const ougiText = activeUnit.ougi ? ` / 奥義:${activeUnit.ougi}${activeUnit.ougiUsed ? "(使用済)" : ""}` : "";
+  el.unitInfo.innerText = `選択中: ${activeUnit.name} (攻${atkText} / 射${reachText} / 移${activeUnit.move ?? 1} / 属:${activeUnit.element}${ougiText})`;
 }
 
 export function showResult(result) {
