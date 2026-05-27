@@ -527,7 +527,7 @@ function resolveOugiFixed(addLog) {
         if (tx === unit.x && ty === unit.y) return;
         if (game.units.some((target) => target.x === tx && target.y === ty)) return;
         if (getTerrainAt(tx, ty)) return;
-        game.terrain.push({ x: tx, y: ty, type: "blocked", label: "wall", temporary: 2 });
+        game.terrain.push({ x: tx, y: ty, type: "blocked", label: "壁", temporary: 2 });
       });
       addLog("[奥義] 絶海防壁: 周囲の空きマスに一時的な岩を作りました。", "possess");
       return;
