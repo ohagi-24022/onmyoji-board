@@ -74,6 +74,12 @@ h2 {
   margin-bottom: 12px;
 }
 
+.battle-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .small-btn {
   padding: 6px 10px;
   border: 1px solid #c9b99d;
@@ -162,6 +168,101 @@ h2 {
 
 .rule-section p {
   margin: 0;
+}
+
+.rule-chart-section {
+  align-items: stretch;
+}
+
+.element-chart {
+  width: min(100%, 360px);
+  margin: 4px auto 0;
+}
+
+.element-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.rule-catalog-section {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #eadfcf;
+  border-radius: 6px;
+}
+
+.rule-catalog-section h3 {
+  margin: 0 0 10px;
+  color: #9f2d25;
+  font-size: 16px;
+}
+
+.shikigami-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.catalog-card {
+  padding: 9px;
+  background: #fbf8f1;
+  border: 1px solid #e0d5c1;
+  border-radius: 6px;
+  font-family: "Hiragino Kaku Gothic Pro", sans-serif;
+}
+
+.catalog-card.catalog-tensho {
+  border-color: #e8b65d;
+  background: #fff8e1;
+}
+
+.catalog-card-head {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  color: #5c4b37;
+  font-size: 12px;
+}
+
+.catalog-card-head .attr-badge {
+  position: static;
+}
+
+.catalog-card-head span:last-child {
+  color: #8b5e34;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.catalog-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 7px 0;
+}
+
+.catalog-stats span {
+  padding: 2px 5px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #eadfcf;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.catalog-card p {
+  margin: 0 0 5px;
+  font-size: 11px;
+}
+
+.catalog-card small {
+  color: #666;
+  font-size: 10px;
 }
 
 #deck-list {
@@ -398,6 +499,7 @@ h2 {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 #ui-panel { width: 100%; margin-top: 0; text-align: center; }
@@ -531,7 +633,7 @@ h2 {
 }
 
 .summon-btn { padding: 4px 8px; border: 0; border-radius: 4px; color: #fff; background: #ab47bc; box-shadow: 0 2px 0 #7b1fa2; cursor: pointer; font-size: 11px; }
-#log { width: 100%; height: 156px; margin-top: 12px; padding: 10px; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; overflow-wrap: anywhere; word-break: break-word; text-align: left; color: #333; background: #fafafa; border: 1px solid #ccc; border-radius: 6px; font-family: "Hiragino Kaku Gothic Pro", sans-serif; font-size: 12px; line-height: 1.5; }
+#log { flex: 0 0 156px; width: 100%; min-width: 0; height: 156px; max-height: 156px; margin-top: 12px; padding: 10px; box-sizing: border-box; overflow-y: auto; overflow-x: hidden; overflow-wrap: anywhere; word-break: break-word; text-align: left; color: #333; background: #fafafa; border: 1px solid #ccc; border-radius: 6px; font-family: "Hiragino Kaku Gothic Pro", sans-serif; font-size: 12px; line-height: 1.5; }
 #log span { overflow-wrap: anywhere; word-break: break-word; }
 .log-atk { color: #d32f2f; font-weight: bold; }
 .log-heal { color: #1976d2; font-weight: bold; }
@@ -553,6 +655,82 @@ h2 {
 
 #result-title { margin-bottom: 10px; color: #333; font-size: 48px; }
 #result-desc { margin-bottom: 40px; color: #666; font-size: 18px; letter-spacing: 1px; }
+
+.help-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+  background: rgba(36, 28, 20, 0.38);
+  border-radius: 12px;
+}
+
+.help-overlay.active {
+  display: flex;
+}
+
+.help-dialog {
+  width: min(620px, 100%);
+  max-height: min(560px, calc(100vh - 52px));
+  overflow: hidden;
+  background: #fbf8f1;
+  border: 1px solid #e0d5c1;
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.help-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border-bottom: 1px solid #eadfcf;
+}
+
+.help-dialog-header h3 {
+  margin: 0;
+  color: #5c4b37;
+  font-size: 18px;
+}
+
+.help-dialog-body {
+  max-height: 470px;
+  padding: 14px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  color: #444;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.help-grid section {
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #eadfcf;
+  border-radius: 6px;
+}
+
+.help-grid h4 {
+  margin: 0 0 5px;
+  color: #9f2d25;
+  font-size: 14px;
+}
+
+.help-grid p {
+  margin: 0;
+}
 
 @media (max-width: 600px) {
   body {
@@ -592,6 +770,10 @@ h2 {
   .small-btn {
     padding: 6px 8px;
     font-size: 11px;
+  }
+
+  .battle-header-actions {
+    gap: 5px;
   }
 
   .battle-layout {
@@ -670,9 +852,19 @@ h2 {
   }
 
   #log {
+    flex-basis: 104px;
     height: 104px;
+    max-height: 104px;
     margin-top: 8px;
     font-size: 11px;
+  }
+
+  .help-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .help-dialog-body {
+    max-height: calc(100vh - 160px);
   }
 
   .planned-label,

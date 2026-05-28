@@ -70,12 +70,85 @@
           </div>
         </section>
 
+        <section class="rule-section rule-chart-section">
+          <span class="rule-number">図</span>
+          <div>
+            <h3>五行相性図</h3>
+            <div class="element-chart" aria-label="五行の相生と相克">
+              <svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg" role="img">
+                <defs>
+                  <filter id="noise">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+                  </filter>
+                  <marker id="arrow-gen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#f57f17" />
+                  </marker>
+                  <marker id="arrow-over" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                    <path d="M 0 1 L 10 5 L 0 9 z" fill="#1976d2" />
+                  </marker>
+                </defs>
+                <rect width="400" height="460" fill="#f9f6f0" rx="12" />
+                <rect width="400" height="460" filter="url(#noise)" opacity="0.05" rx="12" />
+                <rect width="400" height="460" fill="none" stroke="#e0d5c1" stroke-width="4" rx="12" />
+                <text x="200" y="45" text-anchor="middle" fill="#5c4b37" font-family="'Hiragino Mincho ProN', 'Noto Serif JP', serif" font-size="22" font-weight="bold" letter-spacing="2">五行相生・相克</text>
+                <g stroke="#f57f17" stroke-width="5" stroke-linecap="round" fill="none">
+                  <path d="M 99 154 L 164 106" marker-end="url(#arrow-gen)" />
+                  <path d="M 232 103 L 297 151" marker-end="url(#arrow-gen)" />
+                  <path d="M 320 215 L 296 290" marker-end="url(#arrow-gen)" />
+                  <path d="M 242 333 L 163 333" marker-end="url(#arrow-gen)" />
+                  <path d="M 105 295 L 81 220" marker-end="url(#arrow-gen)" />
+                </g>
+                <g stroke="#1976d2" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="6,4">
+                  <path d="M 107 177 L 288 177" marker-end="url(#arrow-over)" />
+                  <path d="M 301 200 L 154 307" marker-end="url(#arrow-over)" />
+                  <path d="M 130 295 L 186 123" marker-end="url(#arrow-over)" />
+                  <path d="M 212 118 L 268 290" marker-end="url(#arrow-over)" />
+                  <path d="M 250 310 L 103 203" marker-end="url(#arrow-over)" />
+                </g>
+                <g font-family="'Hiragino Kaku Gothic Pro', sans-serif" font-weight="bold">
+                  <text x="200" y="36" text-anchor="middle" fill="#b71c1c" font-size="14">か</text>
+                  <circle cx="200" cy="80" r="34" fill="#f44336" stroke="#b71c1c" stroke-width="4" />
+                  <circle cx="200" cy="80" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                  <text x="200" y="88" text-anchor="middle" fill="#fff" font-size="24">火</text>
+                  <text x="333" y="133" text-anchor="middle" fill="#5d4037" font-size="14">ど</text>
+                  <circle cx="333" cy="177" r="34" fill="#8d6e63" stroke="#5d4037" stroke-width="4" />
+                  <circle cx="333" cy="177" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                  <text x="333" y="185" text-anchor="middle" fill="#fff" font-size="24">土</text>
+                  <text x="282" y="388" text-anchor="middle" fill="#f57f17" font-size="14">ごん</text>
+                  <circle cx="282" cy="333" r="34" fill="#ffb300" stroke="#f57f17" stroke-width="4" />
+                  <circle cx="282" cy="333" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                  <text x="282" y="341" text-anchor="middle" fill="#fff" font-size="24">金</text>
+                  <text x="118" y="388" text-anchor="middle" fill="#0d47a1" font-size="14">すい</text>
+                  <circle cx="118" cy="333" r="34" fill="#2196f3" stroke="#1976d2" stroke-width="4" />
+                  <circle cx="118" cy="333" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                  <text x="118" y="341" text-anchor="middle" fill="#fff" font-size="24">水</text>
+                  <text x="67" y="133" text-anchor="middle" fill="#1b5e20" font-size="14">もく</text>
+                  <circle cx="67" cy="177" r="34" fill="#4caf50" stroke="#388e3c" stroke-width="4" />
+                  <circle cx="67" cy="177" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                  <text x="67" y="185" text-anchor="middle" fill="#fff" font-size="24">木</text>
+                </g>
+                <g font-family="'Hiragino Kaku Gothic Pro', sans-serif" font-size="12" font-weight="bold" fill="#555">
+                  <path d="M 75 430 L 105 430" stroke="#f57f17" stroke-width="5" marker-end="url(#arrow-gen)"/>
+                  <text x="120" y="434">相生（支援強化）</text>
+                  <path d="M 225 430 L 255 430" stroke="#1976d2" stroke-width="4" stroke-dasharray="6,4" marker-end="url(#arrow-over)"/>
+                  <text x="270" y="434">相克（ダメージ増加）</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </section>
+
         <section class="rule-section">
           <span class="rule-number">7</span>
           <div>
             <h3>憑依</h3>
             <p>味方式神を陰陽師へ憑依させ、HP・攻撃力・属性を引き継ぎます。十二天将は専用加護と奥義を持ちます。</p>
           </div>
+        </section>
+
+        <section class="rule-catalog-section">
+          <h3>式神一覧</h3>
+          <div id="shikigami-catalog" class="shikigami-catalog"></div>
         </section>
       </div>
       <button class="big-btn muted" data-screen="screen-title">タイトルへ戻る</button>
@@ -95,7 +168,10 @@
     <div id="screen-battle" class="screen">
       <div class="battle-header">
         <h2>陰陽盤上戦記</h2>
-        <button class="small-btn" data-screen="screen-title">タイトルへ戻る</button>
+        <div class="battle-header-actions">
+          <button id="btn-help" class="small-btn">ヘルプ</button>
+          <button class="small-btn" data-screen="screen-title">タイトルへ戻る</button>
+        </div>
       </div>
       <div class="battle-layout">
         <div class="board-area">
@@ -141,6 +217,36 @@
         <div id="result-title"></div>
         <div id="result-desc"></div>
         <button class="big-btn" data-screen="screen-title">タイトルへ戻る</button>
+      </div>
+
+      <div id="battle-help-overlay" class="help-overlay" aria-hidden="true">
+        <div class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="battle-help-title">
+          <div class="help-dialog-header">
+            <h3 id="battle-help-title">プレイ中ヘルプ</h3>
+            <button id="btn-help-close" class="plan-cancel" title="閉じる">×</button>
+          </div>
+          <div class="help-dialog-body">
+            <p class="rules-lead">移動・術・召喚・憑依を予約し、ターン確定で同時に解決します。</p>
+            <div class="help-grid">
+              <section>
+                <h4>行動</h4>
+                <p>移動は機動力の範囲内。術は射程内のマスを指定。召喚は陰陽師の周囲、憑依は味方式神を陰陽師へ重ねます。</p>
+              </section>
+              <section>
+                <h4>状態異常</h4>
+                <p>猛毒はターンごとにHP減少。拘束は移動不能になり、拘束になってから2ターンは再拘束されません。</p>
+              </section>
+              <section>
+                <h4>奥義</h4>
+                <p>十二天将を憑依すると奥義が解放されます。奥義は1試合に1回だけ使用できます。</p>
+              </section>
+              <section>
+                <h4>激突</h4>
+                <p>移動先が重なる、入れ替わろうとする、進入不可へ進むと激突し、移動が止まりダメージを受けます。</p>
+              </section>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

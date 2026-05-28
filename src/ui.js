@@ -15,7 +15,11 @@ export const el = {
   planList: document.getElementById("plan-list"),
   resultOverlay: document.getElementById("result-overlay"),
   resultTitle: document.getElementById("result-title"),
-  resultDesc: document.getElementById("result-desc")
+  resultDesc: document.getElementById("result-desc"),
+  shikigamiCatalog: document.getElementById("shikigami-catalog"),
+  helpOverlay: document.getElementById("battle-help-overlay"),
+  btnHelp: document.getElementById("btn-help"),
+  btnHelpClose: document.getElementById("btn-help-close")
 };
 
 export function showScreen(screenId) {
@@ -79,6 +83,76 @@ export function updateDeckStatus() {
     const normalFull = normalCount >= 3;
     card.classList.toggle("disabled", (shikigami.isTensho && hasTensho && !card.classList.contains("selected")) || (!shikigami.isTensho && normalFull && !card.classList.contains("selected")));
   });
+}
+
+export function renderRulesExtras() {
+  if (!el.shikigamiCatalog || el.shikigamiCatalog.dataset.rendered === "true") return;
+  el.shikigamiCatalog.innerHTML = SHIKIGAMI_MASTER
+    .map((shikigami) => {
+      const ougi = shikigami.ougi ? `奥義:${shikigami.ougi}` : "奥義:-";
+      const status = shikigami.statusEffect ? `状態:${statusEffectLabel(shikigami.statusEffect)}` : "状態:-";
+      const ability = shikigami.tenshoAbility ? `加護:${tenshoAbilityLabel(shikigami.tenshoAbility)}` : status;
+      return `
+        <article class="catalog-card ${shikigami.isTensho ? "catalog-tensho" : ""}">
+          <div class="catalog-card-head">
+            <span class="attr-badge attr-${shikigami.element}">${shikigami.element}</span>
+            <strong>${escapeHtml(shikigami.name)}</strong>
+            <span>${shikigami.isTensho ? "十二天将" : "通常"}</span>
+          </div>
+          <div class="catalog-stats">
+            <span>呪力${shikigami.cost}</span>
+            <span>HP${shikigami.hp}</span>
+            <span>攻${shikigami.atk}</span>
+            <span>射${shikigami.reach}</span>
+            <span>機${shikigami.move}</span>
+          </div>
+          <p>${escapeHtml(shikigami.desc)}</p>
+          <small>${escapeHtml(ability)} / ${escapeHtml(ougi)}</small>
+        </article>
+      `;
+    })
+    .join("");
+  el.shikigamiCatalog.dataset.rendered = "true";
+}
+
+export function bindHelpDialog() {
+  if (!el.helpOverlay || !el.btnHelp || el.helpOverlay.dataset.bound === "true") return;
+  const close = () => {
+    el.helpOverlay.classList.remove("active");
+    el.helpOverlay.setAttribute("aria-hidden", "true");
+  };
+  el.btnHelp.addEventListener("click", () => {
+    el.helpOverlay.classList.add("active");
+    el.helpOverlay.setAttribute("aria-hidden", "false");
+  });
+  el.btnHelpClose?.addEventListener("click", close);
+  el.helpOverlay.addEventListener("click", (event) => {
+    if (event.target === el.helpOverlay) close();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && el.helpOverlay.classList.contains("active")) close();
+  });
+  el.helpOverlay.dataset.bound = "true";
+}
+
+function statusEffectLabel(effect) {
+  if (effect === "poison") return "猛毒";
+  if (effect === "bind") return "拘束";
+  return effect;
+}
+
+function tenshoAbilityLabel(ability) {
+  return {
+    hp: "HP+10",
+    regen: "毎ターンHP+3",
+    knockback: "術命中で後退",
+    reach: "射程+1",
+    balance: "攻+2/HP+5",
+    bruiser: "攻+3/HP+6",
+    guard: "ダメージ1軽減",
+    atk_max: "攻+5",
+    kijin: "攻+3/HP+5"
+  }[ability] ?? ability;
 }
 
 export function renderBattle() {

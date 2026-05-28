@@ -396,8 +396,10 @@ function resolvePossession(addLog) {
     leader.hp += hpBonus;
     leader.atk += atkBonus;
     leader.element = unit.element;
-    leader.ougi = unit.ougi;
-    leader.ougiUsed = false;
+    if (unit.ougi) {
+      leader.ougi = unit.ougi;
+      leader.ougiUsed = false;
+    }
 
     const extra = applyTenshoPossessionBonus(leader, unit);
     addLog(`【憑依】${getUnitLogName(unit)} が陰陽師と一体化した！ (HP+${hpBonus} / 攻+${atkBonus} / 属性:${unit.element})${extra}`, "possess");
@@ -494,7 +496,12 @@ function applyStatusEffect(attacker, target, addLog) {
     addLog(`【猛毒】${getUnitLogName(target)} は毒に侵された。`, "sys");
   }
   if (attacker.statusEffect === "bind") {
+    if (target.status.bindImmunity > 0) {
+      addLog(`【拘束耐性】${getUnitLogName(target)} は拘束を受け流した。`, "sys");
+      return;
+    }
     target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+    target.status.bindImmunity = GAME_CONFIG.STATUS.bind_turns + GAME_CONFIG.STATUS.bind_immunity_turns + 1;
     addLog(`【拘束】${getUnitLogName(target)} は次ターン移動できない。`, "sys");
   }
 }
@@ -557,7 +564,7 @@ function resolveOugiFixed(addLog) {
         dealFixedDamage(target, 4, addLog, "青龍奥義");
         if (target.hp <= 0) return;
         target.status ??= {};
-        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+        applyBind(target, addLog, "青龍奥義");
       });
       addLog(`[奥義] 蒼天の雷撃: 直線上の敵${targets.length}体を貫きました。`, "atk");
       return;
@@ -608,7 +615,7 @@ function resolveOugiFixed(addLog) {
       const targets = game.units.filter((target) => target.owner !== unit.owner && target.hp > 0);
       targets.forEach((target) => {
         target.status ??= {};
-        target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+        applyBind(target, addLog, "神域展開");
         target.status.actionSeal = 1;
       });
       addLog(`[奥義] 神域展開: 全敵${targets.length}体を拘束しました。`, "possess");
@@ -728,6 +735,17 @@ function dealFixedDamage(target, amount, addLog, source) {
   addLog(`【${source}】${getUnitLogName(target)} に${amount}ダメージ。`, "atk");
 }
 
+function applyBind(target, addLog, source = "拘束") {
+  target.status ??= {};
+  if (target.status.bindImmunity > 0) {
+    addLog(`【${source}】${getUnitLogName(target)} は拘束耐性で拘束を防いだ。`, "sys");
+    return false;
+  }
+  target.status.bind = GAME_CONFIG.STATUS.bind_turns + 1;
+  target.status.bindImmunity = GAME_CONFIG.STATUS.bind_turns + GAME_CONFIG.STATUS.bind_immunity_turns + 1;
+  return true;
+}
+
 function getOugiId(ougiName) {
   return SHIKIGAMI_MASTER.find((template) => template.ougi === ougiName)?.id ?? "";
 }
@@ -826,6 +844,7 @@ function resolveTerrainAndStatuses(addLog) {
       addLog(`【猛毒】${getUnitLogName(unit)} に${GAME_CONFIG.STATUS.poison_damage}ダメージ。`, "atk");
     }
     if (unit.status?.bind > 0) unit.status.bind--;
+    if (unit.status?.bindImmunity > 0) unit.status.bindImmunity--;
     if (unit.status?.actionSeal > 0) unit.status.actionSeal--;
     if (unit.invulnerable > 0) unit.invulnerable--;
   });

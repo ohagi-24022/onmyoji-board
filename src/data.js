@@ -4,7 +4,7 @@ export const GAME_CONFIG = {
   MP_REWARD: { move: 1, risk_zone: 1, turn_end: 0, line_push: 1, leader_hit: 1 },
   DAMAGE: { weak_multiplier: 1.5, resist_multiplier: 0.5, collision: 2 },
   BUFF: { atk_boost: 3 },
-  STATUS: { poison_damage: 1, bind_turns: 1 },
+  STATUS: { poison_damage: 1, bind_turns: 1, bind_immunity_turns: 2 },
   TERRAIN: { heal: 2, damage: 1, mp: 1 }
 };
 
@@ -24,6 +24,7 @@ export const SHIKIGAMI_MASTER = [
   { id: "z_kamaitachi", name: "鎌鼬", element: "金", hp: 2, atk: 2, reach: 2, move: 2, cost: 2, isTensho: false, desc: "高機動の奇襲" },
   { id: "z_tengu", name: "烏天狗", element: "木", hp: 6, atk: 3, reach: 1, move: 2, cost: 3, isTensho: false, desc: "高機動の遊撃手" },
   { id: "z_jorogumo", name: "絡新婦", element: "水", hp: 3, atk: 0, reach: 3, move: 1, cost: 3, isTensho: false, statusEffect: "bind", desc: "術命中で拘束" },
+  { id: "z_raiju", name: "雷獣", element: "火", hp: 2, atk: 0, reach: 0, move: 4, cost: 0, isTensho: false, desc: "衝突判定のみで戦う高速式神" },
   { id: "s_genbu", name: "玄武", element: "水", hp: 15, atk: 2, reach: 1, move: 0, cost: 6, isTensho: true, tenshoAbility: "hp", ougi: "絶海防壁", desc: "憑依:HP+10" },
   { id: "s_taijo", name: "太常", element: "土", hp: 12, atk: 4, reach: 2, move: 1, cost: 6, isTensho: true, tenshoAbility: "regen", ougi: "聖域化", desc: "憑依:毎ターンHP+3" },
   { id: "s_tenko", name: "天后", element: "水", hp: 6, atk: 2, reach: 3, move: 1, cost: 6, isTensho: true, tenshoAbility: "knockback", ougi: "幻惑の乗っ取り", desc: "憑依:術命中で後退" },
