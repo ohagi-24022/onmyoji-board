@@ -1,4 +1,4 @@
-import { BOARD_SIZE, SHIKIGAMI_MASTER } from "./data.js";
+import { BOARD_SIZE, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
 import { getEffectiveStats, getTerrainAt, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
 import { game, resetBattleState } from "./state.js";
 import { addLog, createBoard, el, renderBattle, showResult, showScreen } from "./ui.js";
@@ -35,6 +35,10 @@ function bindBattleButtons() {
   document.getElementById("btn-possess").onclick = startPossession;
   document.getElementById("btn-ougi").onclick = startOugi;
   document.getElementById("btn-summon").onclick = () => {
+    if (game.summonCooldown.player > 0) {
+      addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
+      return;
+    }
     game.uiState = "IDLE";
     el.summonPanel.style.display = "flex";
     renderBattle();
@@ -119,6 +123,15 @@ function isValidOugiTarget(leader, x, y) {
 
 function startSummon(templateId) {
   const template = SHIKIGAMI_MASTER.find((m) => m.id === templateId);
+  const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
+  if (game.summonCooldown.player > 0) {
+    addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
+    return;
+  }
+  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
+    addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
+    return;
+  }
   const currentReservedMP = game.plannedSummons
     .filter((summon) => summon.owner === "player")
     .reduce((sum, s) => sum + s.cost, 0);
@@ -283,6 +296,21 @@ function selectOugiTarget(x, y) {
 function selectSummonTarget(x, y) {
   const leader = game.units.find((u) => u.isLeader && u.owner === "player");
   const leaderOrigin = game.planned[leader.id]?.move || { x: leader.x, y: leader.y };
+  const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
+
+  if (game.summonCooldown.player > 0) {
+    addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
+    game.uiState = "IDLE";
+    el.summonPanel.style.display = "none";
+    return;
+  }
+
+  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
+    addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
+    game.uiState = "IDLE";
+    el.summonPanel.style.display = "none";
+    return;
+  }
 
   if (Math.abs(leaderOrigin.x - x) > 1 || Math.abs(leaderOrigin.y - y) > 1) {
     addLog("[警告] 召喚は陰陽師の周囲のみ可能です。", "sys");

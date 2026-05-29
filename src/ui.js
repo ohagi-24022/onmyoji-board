@@ -1,4 +1,4 @@
-import { BOARD_SIZE, SHIKIGAMI_MASTER } from "./data.js";
+import { BOARD_SIZE, GAME_CONFIG, OUGI_EFFECTS, SHIKIGAMI_MASTER } from "./data.js";
 import { getEffectiveStats, getEnemyActionPredictions, getTerrainAt } from "./rules.js";
 import { game } from "./state.js";
 
@@ -90,8 +90,8 @@ export function renderRulesExtras() {
   el.shikigamiCatalog.innerHTML = SHIKIGAMI_MASTER
     .map((shikigami) => {
       const ougi = shikigami.ougi ? `奥義:${shikigami.ougi}` : "奥義:-";
-      const status = shikigami.statusEffect ? `状態:${statusEffectLabel(shikigami.statusEffect)}` : "状態:-";
-      const ability = shikigami.tenshoAbility ? `加護:${tenshoAbilityLabel(shikigami.tenshoAbility)}` : status;
+      const ability = shikigami.possessionBonus?.label ?? "ボーナスなし";
+      const ougiEffect = shikigami.ougi ? OUGI_EFFECTS[shikigami.ougi] : "";
       return `
         <article class="catalog-card ${shikigami.isTensho ? "catalog-tensho" : ""}">
           <div class="catalog-card-head">
@@ -107,7 +107,8 @@ export function renderRulesExtras() {
             <span>機${shikigami.move}</span>
           </div>
           <p>${escapeHtml(shikigami.desc)}</p>
-          <small>${escapeHtml(ability)} / ${escapeHtml(ougi)}</small>
+          <small>憑依:${escapeHtml(ability)}</small>
+          <small>${escapeHtml(ougi)}${ougiEffect ? ` / ${escapeHtml(ougiEffect)}` : ""}</small>
         </article>
       `;
     })
@@ -135,26 +136,6 @@ export function bindHelpDialog() {
   el.helpOverlay.dataset.bound = "true";
 }
 
-function statusEffectLabel(effect) {
-  if (effect === "poison") return "猛毒";
-  if (effect === "bind") return "拘束";
-  return effect;
-}
-
-function tenshoAbilityLabel(ability) {
-  return {
-    hp: "HP+10",
-    regen: "毎ターンHP+3",
-    knockback: "術命中で後退",
-    reach: "射程+1",
-    balance: "攻+2/HP+5",
-    bruiser: "攻+3/HP+6",
-    guard: "ダメージ1軽減",
-    atk_max: "攻+5",
-    kijin: "攻+3/HP+5"
-  }[ability] ?? ability;
-}
-
 export function renderBattle() {
   const cells = document.querySelectorAll(".cell");
   el.board.classList.toggle("resolving", game.isResolving);
@@ -169,6 +150,7 @@ export function renderBattle() {
   document.getElementById("val-mp-player").innerText = game.mp.player - currentReservedMP;
   document.getElementById("val-mp-enemy").innerText = game.mp.enemy;
   el.turnIndicator.innerText = `第${game.turn}ターン`;
+  updateSummonCommandState();
 
   updateUnitInfo();
   updatePlanListV2();
@@ -196,19 +178,34 @@ export function renderBattle() {
     div.className = classes;
 
     const dispAtk = unit.isLeader ? getEffectiveStats(unit).effAtk : unit.atk + unit.buffAtk;
+    const hpText = unit.maxHp ? `${unit.hp}/${unit.maxHp}` : unit.hp;
     div.innerHTML = `
       <div class="attr-badge attr-${unit.element}">${unit.element}</div>
       <div class="u-name">${unit.name}</div>
-      <div class="u-stats">攻${dispAtk} HP${unit.hp}</div>
+      <div class="u-stats">攻${dispAtk} HP${hpText}</div>
     `;
-    if (unit.status?.poison > 0 || unit.status?.bind > 0) {
-      div.innerHTML += `<div class="status-row">${unit.status?.poison > 0 ? "毒" : ""}${unit.status?.bind > 0 ? "縛" : ""}</div>`;
+    if (unit.status?.poison > 0 || unit.status?.bind > 0 || unit.status?.burn > 0) {
+      div.innerHTML += `<div class="status-row">${unit.status?.poison > 0 ? "毒" : ""}${unit.status?.bind > 0 ? "縛" : ""}${unit.status?.burn > 0 ? "炎" : ""}</div>`;
     }
     cell.appendChild(div);
 
     if (game.planned[unit.id]?.move) cells[game.planned[unit.id].move.y * BOARD_SIZE + game.planned[unit.id].move.x].classList.add("move-target");
     if (game.planned[unit.id]?.attack) cells[game.planned[unit.id].attack.y * BOARD_SIZE + game.planned[unit.id].attack.x].classList.add("attack-target");
   });
+}
+
+function updateSummonCommandState() {
+  const button = document.getElementById("btn-summon");
+  const plannedCount = game.plannedSummons.filter((summon) => summon.owner === "player").length;
+  const isCooldown = game.summonCooldown?.player > 0;
+  const isFull = plannedCount >= GAME_CONFIG.SUMMON.max_per_turn;
+  button.disabled = Boolean(isCooldown || isFull);
+  button.classList.toggle("locked", Boolean(isCooldown || isFull));
+  button.title = isCooldown
+    ? "召喚疲労中: このターンは召喚できません"
+    : isFull
+      ? `召喚予約は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体までです`
+      : "";
 }
 
 function addTerrainMarkers(cells) {
@@ -466,6 +463,9 @@ function updateUnitInfo() {
 
   if (game.uiState === "SELECTING_SUMMON_TARGET") {
     document.getElementById("btn-summon").classList.add("active");
+    if (game.summonCooldown?.player > 0) {
+      el.unitInfo.innerText = "召喚疲労中: このターンは召喚できません";
+    }
     return;
   }
 
@@ -498,7 +498,8 @@ function updateUnitInfo() {
   }
 
   const ougiText = activeUnit.ougi ? ` / 奥義:${activeUnit.ougi}${activeUnit.ougiUsed ? "(使用済)" : ""}` : "";
-  el.unitInfo.innerText = `選択中: ${activeUnit.name} (攻${atkText} / 射${reachText} / 移${activeUnit.move ?? 1} / 属:${activeUnit.element}${ougiText})`;
+  const hpText = activeUnit.maxHp ? `${activeUnit.hp}/${activeUnit.maxHp}` : activeUnit.hp;
+  el.unitInfo.innerText = `選択中: ${activeUnit.name} (HP${hpText} / 攻${atkText} / 射${reachText} / 移${stats.effMove} / 属:${activeUnit.element}${ougiText})`;
 }
 
 export function showResult(result) {
