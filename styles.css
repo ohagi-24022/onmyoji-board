@@ -33,6 +33,12 @@ body {
   align-items: stretch;
 }
 
+#app-container[data-screen="screen-deck"] {
+  width: min(860px, calc(100vw - 36px));
+  min-height: min(780px, calc(100vh - 36px));
+  align-items: stretch;
+}
+
 #app-container[data-screen="screen-battle"] {
   width: min(980px, calc(100vw - 36px));
   min-height: 650px;
@@ -70,6 +76,17 @@ h2 {
 .subtitle { margin-bottom: 40px; color: #666; }
 .title-actions, .deck-actions { display: flex; gap: 15px; }
 .title-actions { width: 60%; flex-direction: column; }
+.deck-lead {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: #5c4b37;
+  background: #fbf8f1;
+  border: 1px solid #e0d5c1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1.55;
+}
 
 .battle-header {
   width: 100%;
@@ -291,20 +308,24 @@ h2 {
 }
 
 #deck-list {
-  max-height: 380px;
-  padding: 5px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
+  max-height: min(520px, calc(100vh - 250px));
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 10px;
   overflow-y: auto;
+  box-sizing: border-box;
+  background: #fbf8f1;
+  border: 1px solid #e0d5c1;
+  border-radius: 8px;
 }
 
 .deck-card {
   position: relative;
-  width: 120px;
-  padding: 8px;
-  text-align: center;
+  min-height: 138px;
+  padding: 10px;
+  box-sizing: border-box;
+  text-align: left;
   background: #fff;
   border: 2px solid #e0d5c1;
   border-radius: 6px;
@@ -315,11 +336,50 @@ h2 {
 .deck-card:hover { border-color: #ff9800; background: #fff8e1; }
 .deck-card.selected { border-color: #f57c00; background: #ffe0b2; transform: scale(1.05); box-shadow: 0 2px 8px rgba(245, 124, 0, 0.4); }
 .deck-card.disabled { opacity: 0.5; filter: grayscale(80%); cursor: not-allowed; }
-.dc-name { margin-bottom: 4px; font-weight: bold; font-size: 14px; }
-.dc-type { margin-bottom: 4px; color: #666; font-size: 10px; }
+.deck-card-head {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.deck-card-head .attr-badge {
+  position: static;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+.dc-name { margin-bottom: 2px; color: #4b3829; font-weight: bold; font-size: 15px; line-height: 1.2; }
+.dc-type { color: #666; font-size: 10px; }
 .dc-type.tensho { color: #d32f2f; font-weight: bold; }
-.dc-stats { margin-bottom: 4px; font-size: 11px; }
-.dc-cost { display: inline-block; padding: 2px 6px; color: #6a1b9a; background: #f3e5f5; border-radius: 10px; font-size: 11px; font-weight: bold; }
+.dc-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.dc-stats span {
+  padding: 3px 4px;
+  text-align: center;
+  background: #f7f1e8;
+  border: 1px solid #eadfcf;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+}
+.dc-cost { display: inline-block; padding: 3px 7px; color: #6a1b9a; background: #f3e5f5; border-radius: 10px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+.dc-desc {
+  margin-bottom: 5px;
+  color: #555;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.dc-bonus {
+  color: #75523a;
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 #deck-warning { min-height: 18px; margin-bottom: 10px; color: #d32f2f; font-size: 12px; font-weight: bold; }
 #deck-status { margin-bottom: 15px; color: #d32f2f; font-weight: bold; }
 
@@ -706,8 +766,8 @@ h2 {
 }
 
 .help-dialog {
-  width: min(620px, 100%);
-  max-height: min(560px, calc(100vh - 52px));
+  width: min(760px, 100%);
+  max-height: min(680px, calc(100vh - 52px));
   overflow: hidden;
   background: #fbf8f1;
   border: 1px solid #e0d5c1;
@@ -732,7 +792,7 @@ h2 {
 }
 
 .help-dialog-body {
-  max-height: 470px;
+  max-height: min(590px, calc(100vh - 130px));
   padding: 14px;
   overflow-y: auto;
   box-sizing: border-box;
@@ -764,6 +824,24 @@ h2 {
   margin: 0;
 }
 
+.help-chart-section {
+  margin-top: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #eadfcf;
+  border-radius: 6px;
+}
+
+.help-chart-section h4 {
+  margin: 0 0 8px;
+  color: #9f2d25;
+  font-size: 14px;
+}
+
+.help-element-chart {
+  width: min(100%, 360px);
+}
+
 @media (max-width: 600px) {
   body {
     padding: 8px;
@@ -772,7 +850,8 @@ h2 {
 
   #app-container,
   #app-container[data-screen="screen-battle"],
-  #app-container[data-screen="screen-rules"] {
+  #app-container[data-screen="screen-rules"],
+  #app-container[data-screen="screen-deck"] {
     width: 100%;
     min-height: calc(100vh - 16px);
     padding: 12px;
@@ -788,6 +867,48 @@ h2 {
 
   .title-actions {
     width: 78%;
+  }
+
+  .deck-lead {
+    padding: 9px;
+    font-size: 12px;
+  }
+
+  #deck-list {
+    max-height: calc(100vh - 235px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .deck-card {
+    min-height: 150px;
+    padding: 8px;
+  }
+
+  .deck-card.selected {
+    transform: none;
+  }
+
+  .deck-card-head {
+    grid-template-columns: 18px 1fr;
+  }
+
+  .deck-card-head .dc-cost {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .dc-name {
+    font-size: 13px;
+  }
+
+  .dc-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dc-bonus {
+    font-size: 9px;
   }
 
   .rules-content {
@@ -936,7 +1057,20 @@ h2 {
   }
 
   .help-dialog-body {
-    max-height: calc(100vh - 160px);
+    max-height: calc(100vh - 112px);
+    padding: 10px;
+  }
+
+  .help-overlay {
+    padding: 8px;
+  }
+
+  .help-dialog {
+    max-height: calc(100vh - 18px);
+  }
+
+  .help-element-chart {
+    width: min(100%, 320px);
   }
 
   .planned-label,

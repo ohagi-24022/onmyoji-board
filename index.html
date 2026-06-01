@@ -159,6 +159,7 @@
 
     <div id="screen-deck" class="screen">
       <h2>式神編成（通常3体＋十二天将1体）</h2>
+      <p class="deck-lead">通常式神3体と十二天将1体を選択してください。カードには基礎能力と憑依時の効果を表示しています。</p>
       <div id="deck-list"></div>
       <div id="deck-warning"></div>
       <div id="deck-status">選択中: 通常0 / 3・十二天将0 / 1</div>
@@ -247,7 +248,95 @@
                 <h4>激突</h4>
                 <p>移動先が重なる、入れ替わろうとする、進入不可へ進むと激突し、移動が止まりダメージを受けます。</p>
               </section>
+              <section>
+                <h4>呪力</h4>
+                <p>移動、敵への接近、陰陽師の前進、陰陽師の術命中で獲得します。召喚時は予約した式神の呪力を先に差し引いて表示します。</p>
+              </section>
+              <section>
+                <h4>召喚疲労</h4>
+                <p>召喚予約は1ターン最大2体まで。1体でも召喚が解決されると次の1ターンは召喚コマンドがロックされます。</p>
+              </section>
+              <section>
+                <h4>憑依</h4>
+                <p>陰陽師の憑依ボーナスは最新の憑依で上書きされます。通常式神も十二天将もそれぞれ異なるパッシブ効果を持ちます。</p>
+              </section>
+              <section>
+                <h4>地形</h4>
+                <p>岩は進入不可、龍脈はHPと呪力を回復、瘴気はダメージを与えます。一部の憑依効果で地形効果を無効化できます。</p>
+              </section>
+              <section>
+                <h4>術と支援</h4>
+                <p>敵に当てると攻撃、味方に当てると五行の相生関係なら攻撃力を強化します。攻撃対象が移動すると空振りになることがあります。</p>
+              </section>
+              <section>
+                <h4>状態異常</h4>
+                <p>猛毒は継続ダメージ、炎上は次ターン以降に2ダメージ、拘束は移動不可です。拘束された後は2ターン再拘束されません。</p>
+              </section>
             </div>
+            <section class="help-chart-section">
+              <h4>五行相性</h4>
+              <div class="element-chart help-element-chart" aria-label="五行の相生と相克">
+                <svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg" role="img">
+                  <defs>
+                    <filter id="help-noise">
+                      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+                    </filter>
+                    <marker id="help-arrow-gen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f57f17" />
+                    </marker>
+                    <marker id="help-arrow-over" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#1976d2" />
+                    </marker>
+                  </defs>
+                  <rect width="400" height="460" fill="#f9f6f0" rx="12" />
+                  <rect width="400" height="460" filter="url(#help-noise)" opacity="0.05" rx="12" />
+                  <rect width="400" height="460" fill="none" stroke="#e0d5c1" stroke-width="4" rx="12" />
+                  <text x="200" y="45" text-anchor="middle" fill="#5c4b37" font-family="'Hiragino Mincho ProN', 'Noto Serif JP', serif" font-size="22" font-weight="bold" letter-spacing="2">五行相生・相克</text>
+                  <g stroke="#f57f17" stroke-width="5" stroke-linecap="round" fill="none">
+                    <path d="M 99 154 L 164 106" marker-end="url(#help-arrow-gen)" />
+                    <path d="M 232 103 L 297 151" marker-end="url(#help-arrow-gen)" />
+                    <path d="M 320 215 L 296 290" marker-end="url(#help-arrow-gen)" />
+                    <path d="M 242 333 L 163 333" marker-end="url(#help-arrow-gen)" />
+                    <path d="M 105 295 L 81 220" marker-end="url(#help-arrow-gen)" />
+                  </g>
+                  <g stroke="#1976d2" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="6,4">
+                    <path d="M 107 177 L 288 177" marker-end="url(#help-arrow-over)" />
+                    <path d="M 301 200 L 154 307" marker-end="url(#help-arrow-over)" />
+                    <path d="M 130 295 L 186 123" marker-end="url(#help-arrow-over)" />
+                    <path d="M 212 118 L 268 290" marker-end="url(#help-arrow-over)" />
+                    <path d="M 250 310 L 103 203" marker-end="url(#help-arrow-over)" />
+                  </g>
+                  <g font-family="'Hiragino Kaku Gothic Pro', sans-serif" font-weight="bold">
+                    <text x="200" y="122" text-anchor="middle" fill="#b71c1c" font-size="14">か</text>
+                    <circle cx="200" cy="80" r="34" fill="#f44336" stroke="#b71c1c" stroke-width="4" />
+                    <circle cx="200" cy="80" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                    <text x="200" y="88" text-anchor="middle" fill="#fff" font-size="24">火</text>
+                    <text x="333" y="133" text-anchor="middle" fill="#5d4037" font-size="14">ど</text>
+                    <circle cx="333" cy="177" r="34" fill="#8d6e63" stroke="#5d4037" stroke-width="4" />
+                    <circle cx="333" cy="177" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                    <text x="333" y="185" text-anchor="middle" fill="#fff" font-size="24">土</text>
+                    <text x="282" y="388" text-anchor="middle" fill="#f57f17" font-size="14">ごん</text>
+                    <circle cx="282" cy="333" r="34" fill="#ffb300" stroke="#f57f17" stroke-width="4" />
+                    <circle cx="282" cy="333" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                    <text x="282" y="341" text-anchor="middle" fill="#fff" font-size="24">金</text>
+                    <text x="118" y="388" text-anchor="middle" fill="#0d47a1" font-size="14">すい</text>
+                    <circle cx="118" cy="333" r="34" fill="#2196f3" stroke="#1976d2" stroke-width="4" />
+                    <circle cx="118" cy="333" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                    <text x="118" y="341" text-anchor="middle" fill="#fff" font-size="24">水</text>
+                    <text x="67" y="133" text-anchor="middle" fill="#1b5e20" font-size="14">もく</text>
+                    <circle cx="67" cy="177" r="34" fill="#4caf50" stroke="#388e3c" stroke-width="4" />
+                    <circle cx="67" cy="177" r="28" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+                    <text x="67" y="185" text-anchor="middle" fill="#fff" font-size="24">木</text>
+                  </g>
+                  <g font-family="'Hiragino Kaku Gothic Pro', sans-serif" font-size="12" font-weight="bold" fill="#555">
+                    <path d="M 75 430 L 105 430" stroke="#f57f17" stroke-width="5" marker-end="url(#help-arrow-gen)"/>
+                    <text x="120" y="434">相生（支援強化）</text>
+                    <path d="M 225 430 L 255 430" stroke="#1976d2" stroke-width="4" stroke-dasharray="6,4" marker-end="url(#help-arrow-over)"/>
+                    <text x="266" y="434" font-size="11">相克（ダメージ増加）</text>
+                  </g>
+                </svg>
+              </div>
+            </section>
           </div>
         </div>
       </div>

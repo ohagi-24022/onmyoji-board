@@ -56,12 +56,22 @@ export function renderDeckScreen(onSelectCard) {
     card.className = "deck-card";
     card.dataset.id = shikigami.id;
     card.innerHTML = `
-      <div class="attr-badge attr-${shikigami.element}" style="position:static; margin: 0 auto 4px;">${shikigami.element}</div>
-      <div class="dc-name">${shikigami.name}</div>
-      <div class="dc-type ${shikigami.isTensho ? "tensho" : ""}">${shikigami.isTensho ? "【十二天将】" : "【通常式神】"}</div>
-      <div class="dc-stats">攻${shikigami.atk} HP${shikigami.hp} 射${shikigami.reach} 移${shikigami.move}</div>
-      <div class="dc-cost">呪力:${shikigami.cost}</div>
-      <div style="font-size:9px; color:#888; margin-top:4px;">${shikigami.desc}</div>
+      <div class="deck-card-head">
+        <div class="attr-badge attr-${shikigami.element}">${shikigami.element}</div>
+        <div>
+          <div class="dc-name">${shikigami.name}</div>
+          <div class="dc-type ${shikigami.isTensho ? "tensho" : ""}">${shikigami.isTensho ? "十二天将" : "通常式神"}</div>
+        </div>
+        <div class="dc-cost">呪${shikigami.cost}</div>
+      </div>
+      <div class="dc-stats">
+        <span>HP${shikigami.hp}</span>
+        <span>攻${shikigami.atk}</span>
+        <span>射${shikigami.reach}</span>
+        <span>機${shikigami.move}</span>
+      </div>
+      <div class="dc-desc">${shikigami.desc}</div>
+      <div class="dc-bonus">憑依:${shikigami.possessionBonus?.label ?? "ボーナスなし"}</div>
     `;
     card.onclick = () => onSelectCard(card, shikigami.id);
     el.deckList.appendChild(card);
@@ -498,8 +508,7 @@ function updateUnitInfo() {
   }
 
   const ougiText = activeUnit.ougi ? ` / 奥義:${activeUnit.ougi}${activeUnit.ougiUsed ? "(使用済)" : ""}` : "";
-  const hpText = activeUnit.maxHp ? `${activeUnit.hp}/${activeUnit.maxHp}` : activeUnit.hp;
-  el.unitInfo.innerText = `選択中: ${activeUnit.name} (HP${hpText} / 攻${atkText} / 射${reachText} / 移${stats.effMove} / 属:${activeUnit.element}${ougiText})`;
+  el.unitInfo.innerText = `選択中: ${activeUnit.name} (HP${activeUnit.hp} / 攻${atkText} / 射${reachText} / 移${stats.effMove} / 属:${activeUnit.element}${ougiText})`;
 }
 
 export function showResult(result) {
