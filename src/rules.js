@@ -110,7 +110,7 @@ function buildEnemyPlan(enemy, players) {
   const targetX = enemy.x + Math.sign(closestPlayer.x - enemy.x) * Math.min(moveRange, Math.abs(closestPlayer.x - enemy.x));
   const targetY = enemy.y + Math.sign(closestPlayer.y - enemy.y) * Math.min(moveRange, Math.abs(closestPlayer.y - enemy.y));
   const isOccupied = game.units.find((u) => u.x === targetX && u.y === targetY);
-  if (isOccupied || getTerrainAt(targetX, targetY)?.type === "blocked") {
+  if (isOccupied || getBlockerAt(targetX, targetY)) {
     return {
       unitId: enemy.id,
       unitName: enemy.name,
@@ -164,7 +164,7 @@ function findEnemySummonCell(enemy, closestPlayer) {
       if (x === enemy.x && y === enemy.y) continue;
       const occupied = game.units.some((unit) => unit.x === x && unit.y === y);
       const reserved = game.plannedSummons.some((summon) => summon.x === x && summon.y === y);
-      const blocked = getTerrainAt(x, y)?.type === "blocked";
+      const blocked = Boolean(getBlockerAt(x, y));
       if (!occupied && !reserved && !blocked) {
         candidates.push({ x, y, distance: Math.max(Math.abs(closestPlayer.x - x), Math.abs(closestPlayer.y - y)) });
       }
@@ -338,7 +338,7 @@ function resolveCollisions(addLog) {
     game.units.forEach((unit) => {
       const move = game.planned[unit.id]?.move;
       if (!move) return;
-      if (getTerrainAt(move.x, move.y)?.type !== "blocked") return;
+      if (!getBlockerAt(move.x, move.y)) return;
       game.planned[unit.id].move = null;
       collidedUnitIds.add(unit.id);
       addLog(`【激突】${getUnitLogName(unit)} は進入不可マスに弾かれた！`, "atk");
@@ -395,7 +395,8 @@ function resolvePossession(addLog) {
     leader.element = unit.element;
     if (unit.ougi) {
       leader.ougi = unit.ougi;
-      leader.ougiUsed = false;
+      leader.usedOugiNames ??= [];
+      leader.ougiUsed = Boolean(leader.ougiUsedEver);
     }
 
     const bonusText = unit.possessionBonus?.label ?? "ボーナスなし";
@@ -476,8 +477,10 @@ function resolveAttacks(addLog) {
       if (target.damageVulnerability) dmg += target.damageVulnerability;
       target.hp = Math.max(0, target.hp - dmg);
       if (unit.isLeader && dmg > 0) game.turnFlags.leaderDamagedEnemy[unit.owner] = true;
-      if (dmg > 0) {
+      if (dmg > 0 || unit.statusEffect) {
         applyStatusEffect(unit, target, addLog);
+      }
+      if (dmg > 0) {
         if (unit.burnOnHit) applyBurn(target, addLog);
         if (unit.knockback) knockbackTarget(unit, target, addLog);
       }
@@ -522,7 +525,7 @@ function knockbackTarget(attacker, target, addLog) {
   const nx = target.x + dx;
   const ny = target.y + dy;
   if (nx < 0 || ny < 0 || nx >= BOARD_SIZE || ny >= BOARD_SIZE) return;
-  if (getTerrainAt(nx, ny)?.type === "blocked") return;
+  if (getBlockerAt(nx, ny)) return;
   if (game.units.some((unit) => unit.x === nx && unit.y === ny)) return;
   target.x = nx;
   target.y = ny;
@@ -537,21 +540,24 @@ function resolveOugiFixed(addLog) {
     const ougiId = getOugiId(unit.ougi);
     const { x, y } = plot;
     unit.ougiUsed = true;
+    unit.ougiUsedEver = true;
+    unit.usedOugiNames ??= [];
+    if (!unit.usedOugiNames.includes(unit.ougi)) unit.usedOugiNames.push(unit.ougi);
 
     if (ougiId === "s_genbu") {
       unit.invulnerable = 2;
       forArea(unit.x, unit.y, 1, (tx, ty) => {
         if (tx === unit.x && ty === unit.y) return;
         if (game.units.some((target) => target.x === tx && target.y === ty)) return;
-        if (getTerrainAt(tx, ty)) return;
-        game.terrain.push({ x: tx, y: ty, type: "blocked", label: "岩", temporary: 2 });
+        if (getBlockerAt(tx, ty)) return;
+        game.terrain.push({ x: tx, y: ty, type: "blocked", layer: "blocker", label: "岩", temporary: 2 });
       });
       addLog("[奥義] 絶海防壁: 周囲の空きマスに一時的な岩を作りました。", "possess");
       return;
     }
 
     if (ougiId === "s_taijo") {
-      forArea(x, y, 1, (tx, ty) => addOrReplaceTerrain({ x: tx, y: ty, type: "heal", label: "heal" }));
+      forArea(x, y, 1, (tx, ty) => addOrReplaceArea({ x: tx, y: ty, type: "heal", layer: "area", label: "龍脈" }));
       addLog("[奥義] 聖域化: 指定範囲を竜脈に変えました。", "heal");
       return;
     }
@@ -583,13 +589,13 @@ function resolveOugiFixed(addLog) {
     if (ougiId === "s_sujaku") {
       const target = game.units.find((candidate) => candidate.x === x && candidate.y === y && candidate.owner !== unit.owner);
       if (target) dealFixedDamage(target, 8, addLog, "朱雀奥義");
-      addOrReplaceTerrain({ x, y, type: "damage", label: "fire" });
+      addOrReplaceArea({ x, y, type: "damage", layer: "area", label: "炎上" });
       addLog("[奥義] 煉獄の業火: 指定マスを瘴気地形にしました。", "atk");
       return;
     }
 
     if (ougiId === "s_byakko") {
-      if (!game.units.some((target) => target.x === x && target.y === y) && getTerrainAt(x, y)?.type !== "blocked") {
+      if (!game.units.some((target) => target.x === x && target.y === y) && !getBlockerAt(x, y)) {
         unit.x = x;
         unit.y = y;
       }
@@ -608,7 +614,7 @@ function resolveOugiFixed(addLog) {
         const ty = y + dy;
         if (!isInsideBoard(tx, ty)) return;
         if (game.units.some((target) => target.x === tx && target.y === ty)) return;
-        addOrReplaceTerrain({ x: tx, y: ty, type: "blocked", label: "rock" });
+        addBlocker({ x: tx, y: ty, type: "blocked", layer: "blocker", label: "岩" });
       });
       addLog("[奥義] 地殻変動: 指定地点と十字を岩にしました。", "sys");
       return;
@@ -691,7 +697,7 @@ function resolveOugi(addLog) {
     }
 
     if (unit.ougi === "迅雷風烈") {
-      if (!game.units.some((target) => target.x === x && target.y === y) && getTerrainAt(x, y)?.type !== "blocked") {
+      if (!game.units.some((target) => target.x === x && target.y === y) && !getBlockerAt(x, y)) {
         unit.x = x;
         unit.y = y;
       }
@@ -788,15 +794,26 @@ function isInsideBoard(x, y) {
   return x >= 0 && y >= 0 && x < BOARD_SIZE && y < BOARD_SIZE;
 }
 
-function addOrReplaceTerrain(tile) {
-  game.terrain = game.terrain.filter((current) => current.x !== tile.x || current.y !== tile.y);
+function addOrReplaceArea(tile) {
+  if (getBlockerAt(tile.x, tile.y)) return;
+  game.terrain = game.terrain.filter((current) => getTerrainLayer(current) === "blocker" || current.x !== tile.x || current.y !== tile.y);
+  game.terrain.push({ ...tile, layer: "area" });
+}
+
+function addBlocker(tile) {
+  if (getBlockerAt(tile.x, tile.y)) return;
   game.terrain.push(tile);
+}
+
+function addOrReplaceTerrain(tile) {
+  if (tile.type === "blocked") addBlocker({ ...tile, layer: "blocker" });
+  else addOrReplaceArea({ ...tile, layer: "area" });
 }
 
 function resolveSummons(addLog, summonedOwners = new Set()) {
   game.plannedSummons.forEach((summon) => {
     const isOccupied = game.units.find((u) => u.x === summon.x && u.y === summon.y);
-    const isBlocked = getTerrainAt(summon.x, summon.y)?.type === "blocked";
+    const isBlocked = Boolean(getBlockerAt(summon.x, summon.y));
     const template = SHIKIGAMI_MASTER.find((m) => m.id === summon.templateId);
     const owner = summon.owner ?? "player";
     const leaderAlive = game.units.some((unit) => unit.owner === owner && unit.isLeader && unit.hp > 0);
@@ -823,6 +840,7 @@ function resolveSummons(addLog, summonedOwners = new Set()) {
       isTensho: template.isTensho,
       tenshoAbility: template.tenshoAbility,
       statusEffect: template.statusEffect,
+      possessionBonus: structuredClone(template.possessionBonus),
       ougi: template.ougi,
       ai: owner === "enemy" ? { pattern: "hunter", predictionAccuracy: 0.5 } : undefined,
       x: summon.x,
@@ -836,7 +854,7 @@ function resolveSummons(addLog, summonedOwners = new Set()) {
 function resolveTerrainAndStatuses(addLog) {
   game.units.forEach((unit) => {
     if (unit.hp <= 0) return;
-    const tile = getTerrainAt(unit.x, unit.y);
+    const tile = getAreaAt(unit.x, unit.y);
     if (tile?.type === "heal" && !unit.terrainImmune) {
       unit.hp = Math.min(unit.maxHp ?? unit.hp + GAME_CONFIG.TERRAIN.heal, unit.hp + GAME_CONFIG.TERRAIN.heal);
       game.mp[unit.owner] += GAME_CONFIG.TERRAIN.mp;
@@ -883,7 +901,20 @@ function resolveSummonCooldowns(summonedOwners) {
 }
 
 export function getTerrainAt(x, y) {
-  return game.terrain.find((tile) => tile.x === x && tile.y === y);
+  return getBlockerAt(x, y) ?? getAreaAt(x, y);
+}
+
+export function getBlockerAt(x, y) {
+  return game.terrain.find((tile) => tile.x === x && tile.y === y && getTerrainLayer(tile) === "blocker");
+}
+
+export function getAreaAt(x, y) {
+  return game.terrain.find((tile) => tile.x === x && tile.y === y && getTerrainLayer(tile) === "area");
+}
+
+function getTerrainLayer(tile) {
+  if (tile.layer) return tile.layer;
+  return tile.type === "blocked" ? "blocker" : "area";
 }
 
 function removeDefeatedUnits(addLog) {

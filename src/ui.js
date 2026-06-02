@@ -1,5 +1,5 @@
 import { BOARD_SIZE, GAME_CONFIG, OUGI_EFFECTS, SHIKIGAMI_MASTER } from "./data.js";
-import { getEffectiveStats, getEnemyActionPredictions, getTerrainAt } from "./rules.js";
+import { getBlockerAt, getEffectiveStats, getEnemyActionPredictions } from "./rules.js";
 import { game } from "./state.js";
 
 export const el = {
@@ -72,6 +72,7 @@ export function renderDeckScreen(onSelectCard) {
       </div>
       <div class="dc-desc">${shikigami.desc}</div>
       <div class="dc-bonus">憑依:${shikigami.possessionBonus?.label ?? "ボーナスなし"}</div>
+      ${shikigami.ougi ? `<div class="dc-ougi">奥義:${shikigami.ougi} / ${OUGI_EFFECTS[shikigami.ougi] ?? ""}</div>` : ""}
     `;
     card.onclick = () => onSelectCard(card, shikigami.id);
     el.deckList.appendChild(card);
@@ -223,10 +224,15 @@ function addTerrainMarkers(cells) {
     const cell = cells[tile.y * BOARD_SIZE + tile.x];
     cell.classList.add(`terrain-${tile.type}`);
     const marker = document.createElement("div");
-    marker.className = "terrain-label";
+    marker.className = `terrain-label terrain-label-${terrainLayer(tile)}`;
     marker.innerText = tile.label;
     cell.appendChild(marker);
   });
+}
+
+function terrainLayer(tile) {
+  if (tile.layer) return tile.layer;
+  return tile.type === "blocked" ? "blocker" : "area";
 }
 
 function updatePlanList() {
@@ -392,7 +398,7 @@ function addActionHints(cells) {
     forEachBoardCell((x, y) => {
       if (unit.x === x && unit.y === y) return;
       const moveRange = unit.move ?? 1;
-      if (game.terrain.find((tile) => tile.x === x && tile.y === y)?.type === "blocked") return;
+      if (getBlockerAt(x, y)) return;
       if (Math.abs(unit.x - x) <= moveRange && Math.abs(unit.y - y) <= moveRange) {
         cells[y * BOARD_SIZE + x].classList.add("move-option");
       }
@@ -429,7 +435,7 @@ function addActionHints(cells) {
       if (Math.abs(origin.x - x) > 1 || Math.abs(origin.y - y) > 1) return;
       if (isProjectedOccupied(x, y)) return;
       if (game.plannedSummons.some((summon) => summon.x === x && summon.y === y)) return;
-      if (getTerrainAt(x, y)?.type === "blocked") return;
+      if (getBlockerAt(x, y)) return;
       cells[y * BOARD_SIZE + x].classList.add("summon-option");
     });
   }
@@ -456,9 +462,9 @@ function getOugiId(ougiName) {
 function isOugiTargetOption(leader, x, y) {
   const id = getOugiId(leader.ougi);
   if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
-  if (id === "s_byakko") return !isProjectedOccupied(x, y) && getTerrainAt(x, y)?.type !== "blocked";
+  if (id === "s_byakko") return !isProjectedOccupied(x, y) && !getBlockerAt(x, y);
   if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
-  if (id === "s_sujaku") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner);
+  if (id === "s_sujaku") return !getBlockerAt(x, y);
   return true;
 }
 

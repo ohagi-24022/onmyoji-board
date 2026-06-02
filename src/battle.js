@@ -1,5 +1,5 @@
 import { BOARD_SIZE, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
-import { getEffectiveStats, getTerrainAt, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
+import { getBlockerAt, getEffectiveStats, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
 import { game, resetBattleState } from "./state.js";
 import { addLog, createBoard, el, renderBattle, showResult, showScreen } from "./ui.js";
 
@@ -115,9 +115,9 @@ function isImmediateOugi(ougiName) {
 function isValidOugiTarget(leader, x, y) {
   const id = getOugiId(leader.ougi);
   if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
-  if (id === "s_byakko") return !game.units.some((unit) => unit.x === x && unit.y === y) && getTerrainAt(x, y)?.type !== "blocked";
+  if (id === "s_byakko") return !game.units.some((unit) => unit.x === x && unit.y === y) && !getBlockerAt(x, y);
   if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
-  if (id === "s_sujaku") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner);
+  if (id === "s_sujaku") return !getBlockerAt(x, y);
   return true;
 }
 
@@ -173,7 +173,8 @@ function startOugi() {
     addLog("[警告] 十二天将を憑依させると奥義が解放されます。", "sys");
     return;
   }
-  if (leader.ougiUsed) {
+  if (leader.ougiUsed || leader.ougiUsedEver) {
+    leader.ougiUsed = true;
     addLog("[警告] 奥義は1試合に1度のみです。", "sys");
     return;
   }
@@ -236,7 +237,7 @@ function selectMove(x, y) {
     return;
   }
 
-  if (game.terrain.find((tile) => tile.x === x && tile.y === y)?.type === "blocked") {
+  if (getBlockerAt(x, y)) {
     addLog("[警告] 進入不可マスへは移動できませぬ。", "sys");
     return;
   }
@@ -279,7 +280,7 @@ function selectAttack(x, y) {
 
 function selectOugiTarget(x, y) {
   const leader = game.units.find((u) => u.id === game.activeUnitId && u.isLeader);
-  if (!leader?.ougi || leader.ougiUsed) {
+  if (!leader?.ougi || leader.ougiUsed || leader.ougiUsedEver) {
     game.uiState = "IDLE";
     return;
   }
@@ -323,7 +324,7 @@ function selectSummonTarget(x, y) {
     return px === x && py === y && !game.planned[unit.id]?.possess;
   });
   const alreadySummoned = game.plannedSummons.find((s) => s.x === x && s.y === y);
-  const isBlocked = getTerrainAt(x, y)?.type === "blocked";
+  const isBlocked = Boolean(getBlockerAt(x, y));
 
   if (isProjectedOccupied || alreadySummoned || isBlocked) {
     addLog("[警告] そのマスは移動後のユニットで埋まるか、既に予約済です。", "sys");
@@ -343,6 +344,9 @@ async function executeTurn() {
     document.getElementById("execute-btn").innerText = "スキップ中...";
     return;
   }
+  if (!hasPlayerPlannedActions() && !window.confirm("行動予約がありません。このままターンを確定しますか？")) {
+    return;
+  }
   game.isResolving = true;
   game.skipResolution = false;
   game.resolutionPhase = "解決準備中";
@@ -360,4 +364,15 @@ async function executeTurn() {
   document.getElementById("execute-btn").innerText = "ターン確定";
   renderBattle();
   showResult(result);
+}
+
+function hasPlayerPlannedActions() {
+  const hasUnitPlan = game.units
+    .filter((unit) => unit.owner === "player")
+    .some((unit) => {
+      const plan = game.planned[unit.id];
+      return Boolean(plan?.move || plan?.attack || plan?.possess || plan?.ougi);
+    });
+  const hasSummonPlan = game.plannedSummons.some((summon) => summon.owner === "player");
+  return hasUnitPlan || hasSummonPlan;
 }

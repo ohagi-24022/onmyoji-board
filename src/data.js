@@ -50,11 +50,11 @@ export const SHIKIGAMI_MASTER = [
 ];
 
 export const FIELD_TILES = [
-  { x: 1, y: 3, type: "blocked", label: "岩" },
-  { x: 5, y: 3, type: "blocked", label: "岩" },
-  { x: 3, y: 3, type: "heal", label: "龍脈" },
-  { x: 0, y: 2, type: "damage", label: "瘴気" },
-  { x: 6, y: 4, type: "damage", label: "瘴気" }
+  { x: 1, y: 3, type: "blocked", layer: "blocker", label: "岩" },
+  { x: 5, y: 3, type: "blocked", layer: "blocker", label: "岩" },
+  { x: 3, y: 3, type: "heal", layer: "area", label: "龍脈" },
+  { x: 0, y: 2, type: "damage", layer: "area", label: "瘴気" },
+  { x: 6, y: 4, type: "damage", layer: "area", label: "瘴気" }
 ];
 
 export const INITIAL_UNITS = [
