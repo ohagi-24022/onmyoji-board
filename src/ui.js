@@ -162,6 +162,7 @@ export function renderBattle() {
   document.getElementById("val-mp-enemy").innerText = game.mp.enemy;
   el.turnIndicator.innerText = `第${game.turn}ターン`;
   updateSummonCommandState();
+  updateAttackCommandState();
 
   updateUnitInfo();
   updatePlanListV2();
@@ -188,7 +189,7 @@ export function renderBattle() {
     if (game.planned[unit.id]?.possess) classes += " possessing";
     div.className = classes;
 
-    const dispAtk = unit.isLeader ? getEffectiveStats(unit).effAtk : unit.atk + unit.buffAtk;
+    const dispAtk = getEffectiveStats(unit).effAtk;
     const hpText = unit.maxHp ? `${unit.hp}/${unit.maxHp}` : unit.hp;
     div.innerHTML = `
       <div class="attr-badge attr-${unit.element}">${unit.element}</div>
@@ -208,15 +209,25 @@ export function renderBattle() {
 function updateSummonCommandState() {
   const button = document.getElementById("btn-summon");
   const plannedCount = game.plannedSummons.filter((summon) => summon.owner === "player").length;
-  const isCooldown = game.summonCooldown?.player > 0;
   const isFull = plannedCount >= GAME_CONFIG.SUMMON.max_per_turn;
-  button.disabled = Boolean(isCooldown || isFull);
-  button.classList.toggle("locked", Boolean(isCooldown || isFull));
-  button.title = isCooldown
-    ? "召喚疲労中: このターンは召喚できません"
-    : isFull
-      ? `召喚予約は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体までです`
+  const boardCount = game.units.filter((unit) => unit.owner === "player" && !unit.isLeader && unit.hp > 0 && !game.planned[unit.id]?.possess).length + plannedCount;
+  const isBoardFull = boardCount >= GAME_CONFIG.SUMMON.max_on_board;
+  button.disabled = Boolean(isFull || isBoardFull);
+  button.classList.toggle("locked", Boolean(isFull || isBoardFull));
+  button.title = isFull
+    ? `召喚予約は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体までです`
+    : isBoardFull
+      ? `盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです`
       : "";
+}
+
+function updateAttackCommandState() {
+  const button = document.getElementById("btn-attack");
+  const activeUnit = game.units.find((unit) => unit.id === game.activeUnitId);
+  const isLocked = Boolean(activeUnit?.attackLocked);
+  button.disabled = isLocked;
+  button.classList.toggle("locked", isLocked);
+  button.title = isLocked ? "静と動の構えにより、このターンは術を使用できません" : "";
 }
 
 function addTerrainMarkers(cells) {
@@ -394,10 +405,11 @@ function addActionHints(cells) {
   if (game.uiState === "SELECTING_MOVE") {
     const unit = game.units.find((u) => u.id === game.activeUnitId);
     if (!unit) return;
-    if ((unit.move ?? 1) <= 0 || unit.status?.bind > 0) return;
+    const stats = getEffectiveStats(unit);
+    if (stats.effMove <= 0 || unit.status?.bind > 0) return;
     forEachBoardCell((x, y) => {
       if (unit.x === x && unit.y === y) return;
-      const moveRange = unit.move ?? 1;
+      const moveRange = stats.effMove;
       if (getBlockerAt(x, y)) return;
       if (Math.abs(unit.x - x) <= moveRange && Math.abs(unit.y - y) <= moveRange) {
         cells[y * BOARD_SIZE + x].classList.add("move-option");
@@ -412,7 +424,9 @@ function addActionHints(cells) {
     const stats = getEffectiveStats(unit);
     forEachBoardCell((x, y) => {
       if (x === origin.x && y === origin.y) return;
-      if (Math.abs(origin.x - x) <= stats.effReach && Math.abs(origin.y - y) <= stats.effReach) {
+      const inRange = Math.abs(origin.x - x) <= stats.effReach && Math.abs(origin.y - y) <= stats.effReach;
+      const validLine = !unit.piercing || origin.x === x || origin.y === y;
+      if (inRange && validLine) {
         cells[y * BOARD_SIZE + x].classList.add("attack-option");
       }
     });
@@ -464,6 +478,7 @@ function isOugiTargetOption(leader, x, y) {
   if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
   if (id === "s_byakko") return !isProjectedOccupied(x, y) && !getBlockerAt(x, y);
   if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
+  if (id === "s_taiin") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader && !unit.isTensho);
   if (id === "s_sujaku") return !getBlockerAt(x, y);
   return true;
 }
@@ -479,9 +494,6 @@ function updateUnitInfo() {
 
   if (game.uiState === "SELECTING_SUMMON_TARGET") {
     document.getElementById("btn-summon").classList.add("active");
-    if (game.summonCooldown?.player > 0) {
-      el.unitInfo.innerText = "召喚疲労中: このターンは召喚できません";
-    }
     return;
   }
 
@@ -495,13 +507,17 @@ function updateUnitInfo() {
   const reachText = stats.effReach > activeUnit.reach ? `${stats.effReach}(予測)` : stats.effReach;
 
   if (game.uiState === "SELECTING_MOVE") {
-    const moveText = activeUnit.status?.bind > 0 ? "拘束中" : `移動${activeUnit.move ?? 1}`;
+    const moveText = activeUnit.status?.bind > 0 ? "拘束中" : `移動${stats.effMove}`;
     el.unitInfo.innerText = `移動先を選択: ${activeUnit.name} (${moveText})`;
     document.getElementById("btn-move").classList.add("active");
     return;
   }
 
   if (game.uiState === "SELECTING_ATTACK") {
+    if (activeUnit.attackLocked) {
+      el.unitInfo.innerText = "静と動の構え: このターンは術を使用できません";
+      return;
+    }
     el.unitInfo.innerText = `術の対象マスを選択: ${activeUnit.name} (射程${reachText})`;
     document.getElementById("btn-attack").classList.add("active");
     return;

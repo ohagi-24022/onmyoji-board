@@ -31,14 +31,17 @@ function buildSummonPanel() {
 
 function bindBattleButtons() {
   document.getElementById("btn-move").onclick = () => setMode("SELECTING_MOVE");
-  document.getElementById("btn-attack").onclick = () => setMode("SELECTING_ATTACK");
+  document.getElementById("btn-attack").onclick = () => {
+    const unit = game.units.find((candidate) => candidate.id === game.activeUnitId);
+    if (unit?.attackLocked) {
+      addLog("[警告] 静と動の構えにより、このターンは術を使用できません。", "sys");
+      return;
+    }
+    setMode("SELECTING_ATTACK");
+  };
   document.getElementById("btn-possess").onclick = startPossession;
   document.getElementById("btn-ougi").onclick = startOugi;
   document.getElementById("btn-summon").onclick = () => {
-    if (game.summonCooldown.player > 0) {
-      addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
-      return;
-    }
     game.uiState = "IDLE";
     el.summonPanel.style.display = "flex";
     renderBattle();
@@ -109,7 +112,7 @@ function getOugiId(ougiName) {
 }
 
 function isImmediateOugi(ougiName) {
-  return ["s_genbu", "s_touda", "s_kijin"].includes(getOugiId(ougiName));
+  return ["s_genbu", "s_touda", "s_kijin", "s_rikugo", "s_tenku"].includes(getOugiId(ougiName));
 }
 
 function isValidOugiTarget(leader, x, y) {
@@ -117,6 +120,7 @@ function isValidOugiTarget(leader, x, y) {
   if (id === "s_seiryu") return (x === leader.x || y === leader.y) && !(x === leader.x && y === leader.y);
   if (id === "s_byakko") return !game.units.some((unit) => unit.x === x && unit.y === y) && !getBlockerAt(x, y);
   if (id === "s_tenko") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader);
+  if (id === "s_taiin") return game.units.some((unit) => unit.x === x && unit.y === y && unit.owner !== leader.owner && !unit.isLeader && !unit.isTensho);
   if (id === "s_sujaku") return !getBlockerAt(x, y);
   return true;
 }
@@ -124,12 +128,16 @@ function isValidOugiTarget(leader, x, y) {
 function startSummon(templateId) {
   const template = SHIKIGAMI_MASTER.find((m) => m.id === templateId);
   const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
-  if (game.summonCooldown.player > 0) {
-    addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
-    return;
-  }
   if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
     addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
+    return;
+  }
+  if (getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
+    addLog(`[警告] 盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです。`, "sys");
+    return;
+  }
+  if (template.summonCategory === "quick" && getPlannedQuickSummonCount("player") >= GAME_CONFIG.SUMMON.quick_max_per_turn) {
+    addLog(`[警告] 速攻枠は1ターン最大${GAME_CONFIG.SUMMON.quick_max_per_turn}体までです。`, "sys");
     return;
   }
   const currentReservedMP = game.plannedSummons
@@ -216,7 +224,8 @@ function selectMove(x, y) {
     return;
   }
 
-  if ((unit.move ?? 1) <= 0) {
+  const stats = getEffectiveStats(unit);
+  if (stats.effMove <= 0) {
     addLog(`[警告] ${unit.name} は移動できませぬ。`, "sys");
     return;
   }
@@ -231,7 +240,7 @@ function selectMove(x, y) {
     return;
   }
 
-  const moveRange = unit.move ?? 1;
+  const moveRange = stats.effMove;
   if (Math.abs(unit.x - x) > moveRange || Math.abs(unit.y - y) > moveRange) {
     addLog(`[警告] ${unit.name} の移動範囲は${moveRange}マスです。`, "sys");
     return;
@@ -265,10 +274,17 @@ function selectAttack(x, y) {
     game.uiState = "IDLE";
     return;
   }
+  if (unit.attackLocked) {
+    addLog("[警告] 静と動の構えにより、このターンは術を使用できません。", "sys");
+    game.uiState = "IDLE";
+    return;
+  }
 
   const origin = game.planned[game.activeUnitId].move || { x: unit.x, y: unit.y };
   const stats = getEffectiveStats(unit);
-  if (Math.abs(origin.x - x) <= stats.effReach && Math.abs(origin.y - y) <= stats.effReach) {
+  const isInRange = Math.abs(origin.x - x) <= stats.effReach && Math.abs(origin.y - y) <= stats.effReach;
+  const isValidLine = !unit.piercing || ((origin.x === x || origin.y === y) && !(origin.x === x && origin.y === y));
+  if (isInRange && isValidLine) {
     game.planned[game.activeUnitId].attack = { x, y };
     game.planned[game.activeUnitId].possess = false;
     game.uiState = "IDLE";
@@ -299,17 +315,20 @@ function selectSummonTarget(x, y) {
   const leaderOrigin = game.planned[leader.id]?.move || { x: leader.x, y: leader.y };
   const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
 
-  if (game.summonCooldown.player > 0) {
-    addLog("[警告] 召喚疲労中です。このターンは召喚できませぬ。", "sys");
+  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
+    addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
     game.uiState = "IDLE";
     el.summonPanel.style.display = "none";
     return;
   }
 
-  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
-    addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
-    game.uiState = "IDLE";
-    el.summonPanel.style.display = "none";
+  const template = SHIKIGAMI_MASTER.find((m) => m.id === game.selectedSummonTemplate);
+  if (getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
+    addLog(`[警告] 盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです。`, "sys");
+    return;
+  }
+  if (template.summonCategory === "quick" && getPlannedQuickSummonCount("player") >= GAME_CONFIG.SUMMON.quick_max_per_turn) {
+    addLog(`[警告] 速攻枠は1ターン最大${GAME_CONFIG.SUMMON.quick_max_per_turn}体までです。`, "sys");
     return;
   }
 
@@ -331,11 +350,25 @@ function selectSummonTarget(x, y) {
     return;
   }
 
-  const template = SHIKIGAMI_MASTER.find((m) => m.id === game.selectedSummonTemplate);
   game.plannedSummons.push({ owner: "player", templateId: game.selectedSummonTemplate, x, y, cost: template.cost });
   addLog(`【予約】${template.name} の召喚を命じた。`);
   game.uiState = "IDLE";
   el.summonPanel.style.display = "none";
+}
+
+function getProjectedShikigamiCount(owner) {
+  const current = game.units.filter((unit) =>
+    unit.owner === owner && !unit.isLeader && unit.hp > 0 && !game.planned[unit.id]?.possess
+  ).length;
+  const planned = game.plannedSummons.filter((summon) => summon.owner === owner).length;
+  return current + planned;
+}
+
+function getPlannedQuickSummonCount(owner) {
+  return game.plannedSummons.filter((summon) => {
+    if (summon.owner !== owner) return false;
+    return SHIKIGAMI_MASTER.find((template) => template.id === summon.templateId)?.summonCategory === "quick";
+  }).length;
 }
 
 async function executeTurn() {

@@ -10,7 +10,6 @@ export const game = {
   planned: {},
   plannedSummons: [],
   selectedSummonTemplate: null,
-  summonCooldown: { player: 0, enemy: 0 },
   unitCounter: INITIAL_UNITS.length,
   turn: 1,
   isResolving: false,
@@ -34,7 +33,6 @@ export function resetBattleState() {
   game.planned = {};
   game.plannedSummons = [];
   game.selectedSummonTemplate = null;
-  game.summonCooldown = { player: 0, enemy: 0 };
   game.unitCounter = INITIAL_UNITS.length;
   game.turn = 1;
   game.isResolving = false;
