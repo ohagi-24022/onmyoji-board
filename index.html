@@ -158,29 +158,49 @@
     </div>
 
     <div id="screen-difficulty" class="screen">
-      <h2>難易度選択</h2>
-      <p class="difficulty-lead">敵の能力、行動判断、召喚頻度、行動予測の精度が変化します。</p>
+      <div class="difficulty-heading">
+        <span class="difficulty-kicker">戦い方を選択</span>
+        <h2>難易度選択</h2>
+        <p class="difficulty-lead">敵の能力、思考、召喚頻度、行動予測の見え方が変化します。</p>
+      </div>
       <div id="difficulty-list" class="difficulty-list">
-        <button class="difficulty-card difficulty-easy" data-difficulty="easy">
-          <span class="difficulty-name">易</span>
-          <span class="difficulty-tag">入門</span>
-          <strong>読みやすく穏やかな敵</strong>
-          <span>敵能力低下・召喚頻度低下・予測精度上昇</span>
+        <button type="button" class="difficulty-card difficulty-easy" data-difficulty="easy" aria-pressed="false">
+          <span class="difficulty-card-top">
+            <span class="difficulty-name">易</span>
+            <span class="difficulty-tag">入門</span>
+          </span>
+          <strong>盤面を読みながら覚える</strong>
+          <span class="difficulty-detail">敵能力が低く、召喚は控えめ。敵の行動予測も見えやすくなります。</span>
+          <span class="difficulty-check">この難易度を選ぶ</span>
         </button>
-        <button class="difficulty-card difficulty-normal" data-difficulty="normal">
-          <span class="difficulty-name">標準</span>
-          <span class="difficulty-tag">基本</span>
-          <strong>追跡と召喚を使い分ける敵</strong>
-          <span>標準能力・探索移動・通常の予測精度</span>
+        <button type="button" class="difficulty-card difficulty-normal selected" data-difficulty="normal" aria-pressed="true">
+          <span class="difficulty-card-top">
+            <span class="difficulty-name">標準</span>
+            <span class="difficulty-tag">推奨</span>
+          </span>
+          <strong>基本ルールを存分に楽しむ</strong>
+          <span class="difficulty-detail">追跡と召喚をバランスよく行う、基準となる敵AIです。</span>
+          <span class="difficulty-check">選択中</span>
         </button>
-        <button class="difficulty-card difficulty-hard" data-difficulty="hard">
-          <span class="difficulty-name">難</span>
-          <span class="difficulty-tag">上級</span>
-          <strong>弱点を狙う攻撃的な敵</strong>
-          <span>敵能力上昇・毎ターン召喚判断・移動後攻撃・予測精度低下</span>
+        <button type="button" class="difficulty-card difficulty-hard" data-difficulty="hard" aria-pressed="false">
+          <span class="difficulty-card-top">
+            <span class="difficulty-name">難</span>
+            <span class="difficulty-tag">上級</span>
+          </span>
+          <strong>鋭い判断を下す強敵に挑む</strong>
+          <span class="difficulty-detail">弱った対象を狙い、移動後攻撃と強力な召喚を積極的に使います。</span>
+          <span class="difficulty-check">この難易度を選ぶ</span>
         </button>
       </div>
-      <button class="big-btn muted" data-screen="screen-title">戻る</button>
+      <div class="difficulty-summary" aria-live="polite">
+        <span>選択中</span>
+        <strong id="selected-difficulty-name">標準</strong>
+        <p id="selected-difficulty-description">追跡・召喚・攻撃をバランスよく行う基本難易度。</p>
+      </div>
+      <div class="difficulty-actions">
+        <button type="button" class="big-btn muted" data-screen="screen-title">戻る</button>
+        <button type="button" id="btn-confirm-difficulty" class="big-btn">式神編成へ</button>
+      </div>
     </div>
 
     <div id="screen-deck" class="screen">
