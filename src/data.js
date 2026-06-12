@@ -50,12 +50,12 @@ export const SHIKIGAMI_MASTER = [
   { id: "s_seiryu", name: "青龍", element: "木", hp: 12, atk: 4, reach: 2, move: 1, cost: 7, isTensho: true, tenshoAbility: "reach", ougi: "蒼天の雷撃", desc: "憑依:攻撃と射程強化", possessionBonus: { atk: 1, reach: 1, label: "攻撃力+2 / 射程+1" } },
   { id: "s_sujaku", name: "朱雀", element: "火", hp: 7, atk: 4, reach: 2, move: 2, cost: 7, isTensho: true, tenshoAbility: "balance", ougi: "煉獄の業火", desc: "憑依:攻撃と炎上付与", possessionBonus: { atk: 3, burnOnHit: true, label: "攻撃力+3 / 術ダメージ時に炎上付与" } },
   { id: "s_byakko", name: "白虎", element: "金", hp: 10, atk: 7, reach: 1, move: 1, cost: 7, isTensho: true, tenshoAbility: "bruiser", ougi: "迅雷風烈", desc: "憑依:攻撃と機動強化", possessionBonus: { atk: 3, move: 1, label: "攻撃力+3 / 機動力+1" } },
-  { id: "s_kochin", name: "勾陣", element: "土", hp: 15, atk: 3, reach: 2, move: 1, cost: 7, isTensho: true, tenshoAbility: "guard", ougi: "地殻変動", desc: "憑依:HP強化と地形無効", possessionBonus: { maxHp: 6, currentHp: 6, terrainImmune: true, label: "最大HP+10 / 現在HP+10 / 地形効果を受けない" } },
-  { id: "s_touda", name: "騰蛇", element: "火", hp: 8, atk: 5, reach: 2, move: 1, cost: 8, isTensho: true, tenshoAbility: "atk_max", ougi: "焦熱地獄", desc: "憑依:大火力と不利軽減無視", possessionBonus: { atk: 3, ignoreResist: true, label: "攻撃力+5 / 属性不利のダメージ減衰を無視" } },
+  { id: "s_kochin", name: "勾陣", element: "土", hp: 15, atk: 3, reach: 2, move: 1, cost: 7, isTensho: true, tenshoAbility: "guard", ougi: "地殻変動", desc: "憑依:HP強化と地形無効", possessionBonus: { maxHp: 6, currentHp: 6, terrainImmune: true, label: "最大HP+6 / 現在HP+6 / 地形効果を受けない" } },
+  { id: "s_touda", name: "騰蛇", element: "火", hp: 8, atk: 5, reach: 2, move: 1, cost: 8, isTensho: true, tenshoAbility: "atk_max", ougi: "焦熱地獄", desc: "憑依:大火力と不利軽減無視", possessionBonus: { atk: 3, ignoreResist: true, label: "攻撃力+3 / 属性不利のダメージ減衰を無視" } },
   { id: "s_kijin", name: "貴人", element: "土", hp: 12, atk: 6, reach: 2, move: 1, cost: 8, isTensho: true, tenshoAbility: "kijin", ougi: "神域展開", desc: "憑依:攻撃と拘束付与", possessionBonus: { atk: 3, statusEffect: "bind", label: "攻撃力+3 / 術ダメージ時に拘束付与" } },
   { id: "s_rikugo", name: "六合", element: "木", hp: 10, atk: 3, reach: 2, move: 1, cost: 6, isTensho: true, tenshoAbility: "stance", ougi: "静と動の構え", desc: "奥義後、術を使ったターンは無敵・次ターンは術使用不可", possessionBonus: { label: "パッシブボーナスなし" } },
-  { id: "s_taiin", name: "太陰", element: "金", hp: 8, atk: 5, reach: 3, move: 1, cost: 7, isTensho: true, tenshoAbility: "pierce", ougi: "月影の絶禍", desc: "憑依:直線上のユニットと進入不可マスを貫通", possessionBonus: { atk: 2, piercing: true, label: "攻撃力+2 / 術がユニット・進入不可マスを貫通" } },
-  { id: "s_tenku", name: "天空", element: "土", hp: 12, atk: 4, reach: 2, move: 1, cost: 8, isTensho: true, tenshoAbility: "sanctuary", ougi: "絶天地の陣", desc: "憑依:隣接マスから受ける術ダメージを0にする", possessionBonus: { maxHp: 5, adjacentSpellImmunity: true, label: "最大HP+5 / 隣接マスからの術ダメージを0にする" } }
+  { id: "s_taiin", name: "太陰", element: "金", hp: 8, atk: 5, reach: 3, move: 1, cost: 7, isTensho: true, tenshoAbility: "pierce", ougi: "月影の絶禍", desc: "憑依:直線上のユニットと進入不可マスを貫通", possessionBonus: { atk: 1, piercing: true, label: "攻撃力+1 / 術がユニット・進入不可マスを貫通" } },
+  { id: "s_tenku", name: "天空", element: "土", hp: 12, atk: 4, reach: 2, move: 1, cost: 8, isTensho: true, tenshoAbility: "sanctuary", ougi: "絶天地の陣", desc: "憑依:隣接マスから受ける術ダメージを0にする", possessionBonus: { maxHp: 3, adjacentSpellImmunity: true, label: "最大HP+3 / 隣接マスからの術ダメージを0にする" } }
 ];
 
 export const FIELD_TILES = [
