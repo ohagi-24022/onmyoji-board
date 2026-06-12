@@ -1,4 +1,4 @@
-import { BOARD_SIZE, ELEMENT_BOOST, ELEMENT_WEAK, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
+import { BOARD_SIZE, DIFFICULTY_CONFIG, ELEMENT_BOOST, ELEMENT_WEAK, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
 import { game } from "./state.js";
 
 export function getEffectiveStats(unit) {
@@ -68,16 +68,8 @@ function getEnemyActionPlans() {
 
 function buildEnemyPlan(enemy, players) {
   const stats = getEffectiveStats(enemy);
-  let closestPlayer = null;
-  let minDistance = Infinity;
-
-  players.forEach((player) => {
-    const dist = Math.max(Math.abs(player.x - enemy.x), Math.abs(player.y - enemy.y));
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestPlayer = player;
-    }
-  });
+  const closestPlayer = selectEnemyTarget(enemy, players);
+  const minDistance = closestPlayer ? boardDistance(enemy, closestPlayer) : Infinity;
 
   if (!closestPlayer) return null;
   if (enemy.status?.actionSeal > 0) {
@@ -117,11 +109,8 @@ function buildEnemyPlan(enemy, players) {
     };
   }
 
-  const moveRange = stats.effMove;
-  const targetX = enemy.x + Math.sign(closestPlayer.x - enemy.x) * Math.min(moveRange, Math.abs(closestPlayer.x - enemy.x));
-  const targetY = enemy.y + Math.sign(closestPlayer.y - enemy.y) * Math.min(moveRange, Math.abs(closestPlayer.y - enemy.y));
-  const isOccupied = game.units.find((u) => u.x === targetX && u.y === targetY);
-  if (isOccupied || getBlockerAt(targetX, targetY)) {
+  const move = findEnemyMove(enemy, closestPlayer, stats.effMove);
+  if (!move) {
     return {
       unitId: enemy.id,
       unitName: enemy.name,
@@ -132,17 +121,68 @@ function buildEnemyPlan(enemy, players) {
     };
   }
 
+  const distanceAfterMove = Math.max(Math.abs(closestPlayer.x - move.x), Math.abs(closestPlayer.y - move.y));
   return {
     unitId: enemy.id,
     unitName: enemy.name,
-    type: "move",
-    move: { x: targetX, y: targetY },
-    attack: null,
+    type: enemy.ai?.moveAndAttack && distanceAfterMove <= stats.effReach ? "move_attack" : "move",
+    move,
+    attack: enemy.ai?.moveAndAttack && distanceAfterMove <= stats.effReach
+      ? { x: closestPlayer.x, y: closestPlayer.y }
+      : null,
     targetName: closestPlayer.name
   };
 }
 
+function selectEnemyTarget(enemy, players) {
+  if (players.length === 0) return null;
+  if (enemy.ai?.targetMode !== "tactical") {
+    return [...players].sort((a, b) => boardDistance(enemy, a) - boardDistance(enemy, b))[0];
+  }
+
+  return [...players].sort((a, b) => tacticalTargetScore(enemy, a) - tacticalTargetScore(enemy, b))[0];
+}
+
+function tacticalTargetScore(enemy, target) {
+  const distance = boardDistance(enemy, target);
+  const hpRatio = target.hp / Math.max(1, target.maxHp ?? target.hp);
+  const leaderPriority = target.isLeader ? -2 : 0;
+  return distance * 2 + hpRatio * 4 + leaderPriority;
+}
+
+function boardDistance(a, b) {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+function findEnemyMove(enemy, target, moveRange) {
+  if (enemy.ai?.moveMode === "direct") {
+    const x = enemy.x + Math.sign(target.x - enemy.x) * Math.min(moveRange, Math.abs(target.x - enemy.x));
+    const y = enemy.y + Math.sign(target.y - enemy.y) * Math.min(moveRange, Math.abs(target.y - enemy.y));
+    return isEnemyMoveCellOpen(enemy, x, y) ? { x, y } : null;
+  }
+
+  const candidates = [];
+  for (let y = Math.max(0, enemy.y - moveRange); y <= Math.min(BOARD_SIZE - 1, enemy.y + moveRange); y++) {
+    for (let x = Math.max(0, enemy.x - moveRange); x <= Math.min(BOARD_SIZE - 1, enemy.x + moveRange); x++) {
+      if (x === enemy.x && y === enemy.y) continue;
+      if (!isEnemyMoveCellOpen(enemy, x, y)) continue;
+      const distance = Math.max(Math.abs(target.x - x), Math.abs(target.y - y));
+      const alignmentBonus = enemy.ai?.moveMode === "tactical" && (x === target.x || y === target.y) ? -0.25 : 0;
+      candidates.push({ x, y, score: distance + alignmentBonus });
+    }
+  }
+  candidates.sort((a, b) => a.score - b.score || Math.abs(a.x - target.x) - Math.abs(b.x - target.x));
+  return candidates[0] ? { x: candidates[0].x, y: candidates[0].y } : null;
+}
+
+function isEnemyMoveCellOpen(enemy, x, y) {
+  if (getBlockerAt(x, y)) return false;
+  return !game.units.some((unit) => unit.id !== enemy.id && unit.x === x && unit.y === y);
+}
+
 function buildEnemySummonPlan(enemy, closestPlayer) {
+  const summonInterval = Math.max(1, enemy.ai?.summonInterval ?? 1);
+  if ((game.turn - 1) % summonInterval !== 0) return null;
   const enemyCount = game.units.filter((unit) =>
     unit.owner === "enemy" && !unit.isLeader && unit.templateId !== "z_raiju" && unit.hp > 0
   ).length;
@@ -207,7 +247,7 @@ function applyPredictionAccuracy(plan) {
 
 function planAccuracy(plan) {
   const unit = game.units.find((u) => u.id === plan.unitId);
-  return unit?.ai?.predictionAccuracy ?? 0.7;
+  return unit?.ai?.predictionAccuracy ?? DIFFICULTY_CONFIG[game.difficulty]?.predictionAccuracy ?? 0.7;
 }
 
 function stableRoll(seed) {
@@ -857,6 +897,7 @@ function addOrReplaceTerrain(tile) {
 }
 
 function resolveSummons(addLog) {
+  const difficulty = DIFFICULTY_CONFIG[game.difficulty] ?? DIFFICULTY_CONFIG.normal;
   const quickSummons = { player: 0, enemy: 0 };
   const regularSummons = { player: 0, enemy: 0 };
   game.plannedSummons.forEach((summon) => {
@@ -890,15 +931,17 @@ function resolveSummons(addLog) {
     if (template.summonCategory === "quick") quickSummons[owner]++;
     else regularSummons[owner]++;
     game.unitCounter++;
+    const hpBonus = owner === "enemy" ? difficulty.summonedHpBonus : 0;
+    const atkBonus = owner === "enemy" ? difficulty.summonedAtkBonus : 0;
     game.units.push({
       id: `u_${game.unitCounter}`,
       templateId: template.id,
       name: template.name,
       owner,
       element: template.element,
-      hp: template.hp,
-      maxHp: template.hp,
-      atk: template.atk,
+      hp: template.hp + hpBonus,
+      maxHp: template.hp + hpBonus,
+      atk: template.atk + atkBonus,
       buffAtk: 0,
       reach: template.reach,
       move: template.move,
@@ -908,7 +951,15 @@ function resolveSummons(addLog) {
       statusEffect: template.statusEffect,
       possessionBonus: structuredClone(template.possessionBonus),
       ougi: template.ougi,
-      ai: owner === "enemy" ? { pattern: "hunter", predictionAccuracy: 0.5 } : undefined,
+      ai: owner === "enemy"
+        ? {
+            pattern: "hunter",
+            predictionAccuracy: difficulty.predictionAccuracy,
+            targetMode: difficulty.targetMode,
+            moveMode: difficulty.moveMode,
+            moveAndAttack: difficulty.moveAndAttack
+          }
+        : undefined,
       summonedTurn: game.turn,
       prophecyTurns: 0,
       x: summon.x,

@@ -9,6 +9,57 @@ export const GAME_CONFIG = {
   SUMMON: { max_per_turn: 2, max_on_board: 5, quick_max_per_turn: 1 }
 };
 
+export const DIFFICULTY_CONFIG = {
+  easy: {
+    label: "易",
+    description: "敵の能力と召喚頻度が低く、行動予測が見えやすい入門向け。",
+    enemyLeader: { hp: 20, atk: 2 },
+    enemyUnit: { hp: 8, atk: 3 },
+    enemyStartMp: 1,
+    predictionAccuracy: 0.9,
+    summonInterval: 3,
+    summonLimit: 2,
+    summonPool: ["z_onibi", "z_dorotabo"],
+    targetMode: "nearest",
+    moveMode: "direct",
+    moveAndAttack: false,
+    summonedAtkBonus: 0,
+    summonedHpBonus: 0
+  },
+  normal: {
+    label: "標準",
+    description: "追跡・召喚・攻撃をバランスよく行う基本難易度。",
+    enemyLeader: { hp: 25, atk: 3 },
+    enemyUnit: { hp: 10, atk: 4 },
+    enemyStartMp: 2,
+    predictionAccuracy: 0.7,
+    summonInterval: 2,
+    summonLimit: 3,
+    summonPool: ["z_onibi", "z_dorotabo", "z_kappa"],
+    targetMode: "nearest",
+    moveMode: "search",
+    moveAndAttack: false,
+    summonedAtkBonus: 0,
+    summonedHpBonus: 0
+  },
+  hard: {
+    label: "難",
+    description: "弱った式神や陰陽師を狙い、移動後攻撃と高性能な召喚を使う上級者向け。",
+    enemyLeader: { hp: 30, atk: 4 },
+    enemyUnit: { hp: 12, atk: 5 },
+    enemyStartMp: 3,
+    predictionAccuracy: 0.45,
+    summonInterval: 1,
+    summonLimit: 5,
+    summonPool: ["z_kappa", "z_wanyudo", "z_chin", "z_komainu"],
+    targetMode: "tactical",
+    moveMode: "tactical",
+    moveAndAttack: true,
+    summonedAtkBonus: 1,
+    summonedHpBonus: 2
+  }
+};
+
 export const ELEMENT_WEAK = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
 export const ELEMENT_BOOST = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
 

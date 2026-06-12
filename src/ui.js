@@ -385,29 +385,38 @@ function addPlanMarker(cell, type, text) {
 
 function addEnemyPredictions(cells) {
   getEnemyActionPredictions().forEach((prediction) => {
+    if (prediction.type === "move_attack") {
+      addEnemyPredictionMarker(cells, prediction.move, "move", prediction.accuracy, "敵移動");
+      addEnemyPredictionMarker(cells, prediction.attack, "attack", prediction.accuracy, "敵術");
+      return;
+    }
     const target = prediction.move || prediction.attack || prediction.summon || (prediction.type === "unknown" ? { x: prediction.x, y: prediction.y } : null);
     if (!target) return;
 
-    const cell = cells[target.y * BOARD_SIZE + target.x];
-    const className = {
-      attack: "enemy-attack-prediction",
-      move: "enemy-move-prediction",
-      summon: "enemy-summon-prediction",
-      unknown: "enemy-unknown-prediction"
-    }[prediction.type];
-    cell.classList.add(className);
-
-    const marker = document.createElement("div");
-    marker.className = "enemy-prediction-label";
-    marker.innerText = {
+    const label = {
       attack: "敵術",
       move: "敵移動",
       summon: "敵召喚",
       unknown: "敵?"
     }[prediction.type];
-    marker.title = `予測精度 ${Math.round((prediction.accuracy ?? 0) * 100)}%`;
-    cell.appendChild(marker);
+    addEnemyPredictionMarker(cells, target, prediction.type, prediction.accuracy, label);
   });
+}
+
+function addEnemyPredictionMarker(cells, target, type, accuracy, label) {
+  if (!target) return;
+  const cell = cells[target.y * BOARD_SIZE + target.x];
+  cell.classList.add({
+    attack: "enemy-attack-prediction",
+    move: "enemy-move-prediction",
+    summon: "enemy-summon-prediction",
+    unknown: "enemy-unknown-prediction"
+  }[type]);
+  const marker = document.createElement("div");
+  marker.className = "enemy-prediction-label";
+  marker.innerText = label;
+  marker.title = `予測精度 ${Math.round((accuracy ?? 0) * 100)}%`;
+  cell.appendChild(marker);
 }
 
 function addActionHints(cells) {

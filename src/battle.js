@@ -1,4 +1,4 @@
-import { BOARD_SIZE, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
+import { BOARD_SIZE, DIFFICULTY_CONFIG, GAME_CONFIG, SHIKIGAMI_MASTER } from "./data.js";
 import { getBlockerAt, getEffectiveStats, getUnitLogName, planEnemyActionsAI, resolveTurnPhased } from "./rules.js";
 import { game, resetBattleState } from "./state.js";
 import { addLog, createBoard, el, renderBattle, showResult, showScreen } from "./ui.js";
@@ -12,7 +12,9 @@ export function startBattle() {
   resetBattleState();
   el.resultOverlay.style.display = "none";
   el.log.innerHTML = "";
-  addLog("システム: 結界が構築された。戦闘開始！", "sys");
+  const difficulty = DIFFICULTY_CONFIG[game.difficulty] ?? DIFFICULTY_CONFIG.normal;
+  document.getElementById("difficulty-indicator").innerText = `難易度: ${difficulty.label}`;
+  addLog(`システム: 結界が構築された。難易度「${difficulty.label}」で戦闘開始！`, "sys");
   showScreen("screen-battle");
   renderBattle();
 }
