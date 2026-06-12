@@ -28,7 +28,7 @@ export function resetBattleState() {
       : undefined
   }));
   game.terrain = structuredClone(FIELD_TILES);
-  game.mp = { player: 5, enemy: 5 };
+  game.mp = { player: 2, enemy: 2 };
   game.uiState = "IDLE";
   game.activeUnitId = null;
   game.planned = {};
