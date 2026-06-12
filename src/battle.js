@@ -127,12 +127,12 @@ function isValidOugiTarget(leader, x, y) {
 
 function startSummon(templateId) {
   const template = SHIKIGAMI_MASTER.find((m) => m.id === templateId);
-  const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
-  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
+  const currentPlayerSummons = getPlannedRegularSummonCount("player");
+  if (template.summonCategory !== "quick" && currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
     addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
     return;
   }
-  if (getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
+  if (template.summonCategory !== "quick" && getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
     addLog(`[警告] 盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです。`, "sys");
     return;
   }
@@ -313,17 +313,17 @@ function selectOugiTarget(x, y) {
 function selectSummonTarget(x, y) {
   const leader = game.units.find((u) => u.isLeader && u.owner === "player");
   const leaderOrigin = game.planned[leader.id]?.move || { x: leader.x, y: leader.y };
-  const currentPlayerSummons = game.plannedSummons.filter((summon) => summon.owner === "player").length;
+  const currentPlayerSummons = getPlannedRegularSummonCount("player");
+  const template = SHIKIGAMI_MASTER.find((m) => m.id === game.selectedSummonTemplate);
 
-  if (currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
+  if (template.summonCategory !== "quick" && currentPlayerSummons >= GAME_CONFIG.SUMMON.max_per_turn) {
     addLog(`[警告] 1ターンに予約できる召喚は最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
     game.uiState = "IDLE";
     el.summonPanel.style.display = "none";
     return;
   }
 
-  const template = SHIKIGAMI_MASTER.find((m) => m.id === game.selectedSummonTemplate);
-  if (getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
+  if (template.summonCategory !== "quick" && getProjectedShikigamiCount("player") >= GAME_CONFIG.SUMMON.max_on_board) {
     addLog(`[警告] 盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです。`, "sys");
     return;
   }
@@ -358,10 +358,21 @@ function selectSummonTarget(x, y) {
 
 function getProjectedShikigamiCount(owner) {
   const current = game.units.filter((unit) =>
-    unit.owner === owner && !unit.isLeader && unit.hp > 0 && !game.planned[unit.id]?.possess
+    unit.owner === owner &&
+    !unit.isLeader &&
+    unit.templateId !== "z_raiju" &&
+    unit.hp > 0 &&
+    !game.planned[unit.id]?.possess
   ).length;
-  const planned = game.plannedSummons.filter((summon) => summon.owner === owner).length;
+  const planned = getPlannedRegularSummonCount(owner);
   return current + planned;
+}
+
+function getPlannedRegularSummonCount(owner) {
+  return game.plannedSummons.filter((summon) => {
+    if (summon.owner !== owner) return false;
+    return SHIKIGAMI_MASTER.find((template) => template.id === summon.templateId)?.summonCategory !== "quick";
+  }).length;
 }
 
 function getPlannedQuickSummonCount(owner) {

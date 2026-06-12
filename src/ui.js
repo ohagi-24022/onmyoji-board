@@ -208,16 +208,25 @@ export function renderBattle() {
 
 function updateSummonCommandState() {
   const button = document.getElementById("btn-summon");
-  const plannedCount = game.plannedSummons.filter((summon) => summon.owner === "player").length;
+  const plannedCount = game.plannedSummons.filter((summon) => {
+    if (summon.owner !== "player") return false;
+    return SHIKIGAMI_MASTER.find((template) => template.id === summon.templateId)?.summonCategory !== "quick";
+  }).length;
   const isFull = plannedCount >= GAME_CONFIG.SUMMON.max_per_turn;
-  const boardCount = game.units.filter((unit) => unit.owner === "player" && !unit.isLeader && unit.hp > 0 && !game.planned[unit.id]?.possess).length + plannedCount;
+  const boardCount = game.units.filter((unit) =>
+    unit.owner === "player" &&
+    !unit.isLeader &&
+    unit.templateId !== "z_raiju" &&
+    unit.hp > 0 &&
+    !game.planned[unit.id]?.possess
+  ).length + plannedCount;
   const isBoardFull = boardCount >= GAME_CONFIG.SUMMON.max_on_board;
-  button.disabled = Boolean(isFull || isBoardFull);
-  button.classList.toggle("locked", Boolean(isFull || isBoardFull));
+  button.disabled = false;
+  button.classList.remove("locked");
   button.title = isFull
-    ? `召喚予約は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体までです`
+    ? `通常召喚は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体です（雷獣は含みません）`
     : isBoardFull
-      ? `盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです`
+      ? `盤面上の味方式神は最大${GAME_CONFIG.SUMMON.max_on_board}体です（雷獣は含みません）`
       : "";
 }
 

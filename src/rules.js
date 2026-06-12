@@ -143,7 +143,9 @@ function buildEnemyPlan(enemy, players) {
 }
 
 function buildEnemySummonPlan(enemy, closestPlayer) {
-  const enemyCount = game.units.filter((unit) => unit.owner === "enemy" && !unit.isLeader && unit.hp > 0).length;
+  const enemyCount = game.units.filter((unit) =>
+    unit.owner === "enemy" && !unit.isLeader && unit.templateId !== "z_raiju" && unit.hp > 0
+  ).length;
   const summonLimit = Math.min(enemy.ai?.summonLimit ?? GAME_CONFIG.SUMMON.max_on_board, GAME_CONFIG.SUMMON.max_on_board);
   if (enemyCount >= summonLimit) return null;
 
@@ -856,6 +858,7 @@ function addOrReplaceTerrain(tile) {
 
 function resolveSummons(addLog) {
   const quickSummons = { player: 0, enemy: 0 };
+  const regularSummons = { player: 0, enemy: 0 };
   game.plannedSummons.forEach((summon) => {
     const isOccupied = game.units.find((u) => u.x === summon.x && u.y === summon.y);
     const isBlocked = Boolean(getBlockerAt(summon.x, summon.y));
@@ -867,8 +870,14 @@ function resolveSummons(addLog) {
       addLog(`【召喚失敗】速攻枠は1ターン最大${GAME_CONFIG.SUMMON.quick_max_per_turn}体までです。`, "sys");
       return;
     }
-    const alliedShikigamiCount = game.units.filter((unit) => unit.owner === owner && !unit.isLeader && unit.hp > 0).length;
-    if (alliedShikigamiCount >= GAME_CONFIG.SUMMON.max_on_board) {
+    if (template?.summonCategory !== "quick" && regularSummons[owner] >= GAME_CONFIG.SUMMON.max_per_turn) {
+      addLog(`【召喚失敗】通常召喚は1ターン最大${GAME_CONFIG.SUMMON.max_per_turn}体までです。`, "sys");
+      return;
+    }
+    const alliedShikigamiCount = game.units.filter((unit) =>
+      unit.owner === owner && !unit.isLeader && unit.templateId !== "z_raiju" && unit.hp > 0
+    ).length;
+    if (template?.summonCategory !== "quick" && alliedShikigamiCount >= GAME_CONFIG.SUMMON.max_on_board) {
       addLog(`【召喚失敗】盤面上の式神は最大${GAME_CONFIG.SUMMON.max_on_board}体までです。`, "sys");
       return;
     }
@@ -879,6 +888,7 @@ function resolveSummons(addLog) {
 
     game.mp[owner] -= summon.cost;
     if (template.summonCategory === "quick") quickSummons[owner]++;
+    else regularSummons[owner]++;
     game.unitCounter++;
     game.units.push({
       id: `u_${game.unitCounter}`,
